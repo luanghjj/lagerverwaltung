@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lagerverwaltung">
+<meta name="theme-color" content="#0B0E14">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<title>Lagerverwaltung v1.6.2 — Okyu Gastro Group</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app"></div>
+<div id="toasts" class="tst-c"></div>
+
+<!-- Supabase (must load first) -->
+<script src="js/supabase.js"></script>
+
+<!-- Core (load order matters!) -->
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui_helpers.js"></script>
+<script src="js/render.js"></script>
+
+<!-- Feature Modules -->
+<script src="js/dashboard.js"></script>
+<script src="js/auswertung.js"></script>
+<script src="js/artikel.js"></script>
+<script src="js/bewegungen.js"></script>
+<script src="js/inventur.js"></script>
+<script src="js/transfer.js"></script>
+<script src="js/export_bew.js"></script>
+<script src="js/bestellliste.js"></script>
+<script src="js/bestellungen.js"></script>
+<script src="js/lieferanten.js"></script>
+<script src="js/benutzer.js"></script>
+<script src="js/restaurant.js"></script>
+<script src="js/standorte.js"></script>
+<script src="js/lagerplaetze_inline.js"></script>
+<script src="js/qr.js"></script>
+<script src="js/lagerplaetze.js"></script>
+<script src="js/kategorien.js"></script>
+<script src="js/einstellungen.js"></script>
+<script src="js/artikel_detail.js"></script>
+<script src="js/export.js"></script>
+<script src="js/login.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/telegram.js"></script>
+
+<!-- Push Notifications -->
+<script src="js/push.js"></script>
+
+<!-- Offline Queue -->
+<script src="js/offline.js"></script>
+
+<!-- Init (must be last) -->
+<script src="js/init.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.log('SW error:', e));
+  }
+</script>
+</body>
+</html>

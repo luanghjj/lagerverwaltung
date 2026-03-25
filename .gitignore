@@ -1,0 +1,14 @@
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Node (nếu có)
+node_modules/
