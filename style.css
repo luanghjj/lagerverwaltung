@@ -245,7 +245,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
 }
 
 /* ═══ Hamburger button ═══ */
-.hb{display:none;position:fixed;top:8px;right:8px;left:auto;z-index:98;width:38px;height:38px;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--bd);border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15);-webkit-tap-highlight-color:transparent}
+.hb{display:none;position:fixed;top:calc(8px + env(safe-area-inset-top, 0px));right:calc(8px + env(safe-area-inset-right, 0px));left:auto;z-index:98;width:38px;height:38px;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--bd);border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15);-webkit-tap-highlight-color:transparent}
 .hb span{display:block;width:18px;height:2px;background:var(--tx);border-radius:1px;position:relative;transition:all .2s}.hb span::before,.hb span::after{content:"";position:absolute;width:18px;height:2px;background:var(--tx);border-radius:1px;left:0;transition:all .2s}.hb span::before{top:-6px}.hb span::after{top:6px}
 
 /* ═══ Touch improvements ═══ */
@@ -294,4 +294,10 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
   /* Lieferant quick-order stack */
   .lief-ord-row{flex-direction:column!important;align-items:stretch!important;gap:4px!important}
   .lief-ord-row td{display:flex;justify-content:space-between;padding:4px 6px!important}
+}
+
+/* ═══ PWA Standalone safe-area ═══ */
+@media all and (display-mode: standalone) {
+  #app{padding-top:env(safe-area-inset-top, 0px)}
+  .sb{padding-top:env(safe-area-inset-top, 0px)}
 }
