@@ -64,16 +64,16 @@ async function savePushSubscription(sub) {
 }
 
 async function initPush() {
-  if (!isPushSupported() || !U || !U.id) return;
-  if (Notification.permission === 'default') {
-    const ask = confirm(
-      LANG === 'vi'
-        ? 'Bạn muốn nhận thông báo kho hàng trên điện thoại?'
-        : 'Möchten Sie Lager-Benachrichtigungen auf Ihrem Gerät erhalten?'
-    );
-    if (!ask) return;
+  if (!isPushSupported() || !U || !U.id) {
+    console.log('[Push] Skip:', !isPushSupported() ? 'not supported' : 'no user');
+    return;
   }
-  if (Notification.permission !== 'denied') await subscribePush();
+  console.log('[Push] Permission:', Notification.permission);
+  if (Notification.permission === 'denied') {
+    console.log('[Push] Blocked by user');
+    return;
+  }
+  await subscribePush();
 }
 
 async function sendPushNotification(eventType, standortId, title, body, roles) {
