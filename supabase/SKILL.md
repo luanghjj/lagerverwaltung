@@ -1,5 +1,5 @@
 # 在庫管理アプリ — プロジェクトコンテキスト
-# Lagerverwaltung v1.9.3
+# Lagerverwaltung v1.9.9
 
 > **重要**: このファイルを最初に読んでください。プロジェクトの全体構造と技術情報が含まれています。
 
@@ -19,7 +19,7 @@
 ```
 ├── index.html          # エントリーポイント、viewport-fit=cover
 ├── style.css           # CSS、PWAスタンドアロンのsafe-area含む
-├── sw.js               # サービスワーカー、CACHE_NAME = 'lager-v1.9.3'
+├── sw.js               # サービスワーカー、CACHE_NAME = 'lager-v1.9.9'
 ├── manifest.json       # PWAマニフェスト
 ├── SKILL.md            # このファイル（AIコンテキスト用）
 ├── js/

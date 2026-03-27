@@ -18,7 +18,7 @@ const norm = s => String(s??"").normalize("NFD").replace(/[\u0300-\u036f\u0111\u
 const WDAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 const WDAYS_S = ["Mo","Di","Mi","Do","Fr","Sa","So"];
 const WDAYS_VI = ["T2","T3","T4","T5","T6","T7","CN"];
-const APP_VERSION = "v1.9.3";
+const APP_VERSION = "v1.9.9";
 /* CHANGELOG
   v1.6.1 (24.03.2026)
   - Inventur: Gruppierung nach Lagerort oder Kategorie (mit farbigen Headern + Zähler)
