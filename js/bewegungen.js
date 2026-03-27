@@ -401,3 +401,4 @@ let INV_DONE = [];
 let INV_KAT = "all";
 let INV_SORT = "lagerort"; // "name" | "lagerort" | "sku" | "status"
 let INV_GROUP = "lagerort"; // "none" | "lagerort" | "kat"
+let INV_SEARCH = "";

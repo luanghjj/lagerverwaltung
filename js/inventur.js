@@ -42,6 +42,9 @@ function renderInventur(vS, aS) {
     const diffCount = Object.entries(INV_DATA).filter(([artId, v]) => { const a = D.artikel.find(x=>x.id===artId); return v.gezählt !== undefined && v.gezählt !== (a?.istBestand[stId]||0); }).length;
     h += `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:600;margin-bottom:3px"><span style="color:var(--ac)">${countedArts}/${totalArts} ${LANG==="vi"?"đã đếm":"gezählt"} (${pctDone}%)</span><span style="color:${diffCount?"var(--rd)":"var(--gn)"}">${diffCount} ${LANG==="vi"?"chênh lệch":"Differenzen"}</span></div><div class="stk-b" style="height:6px"><div class="stk-f" style="width:${pctDone}%;background:${pctDone===100?"var(--gn)":"var(--ac)"}"></div></div></div>`;
 
+    // Search bar
+    h += `<div style="margin-bottom:8px"><div class="srch" style="position:relative"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" id="inv_search" placeholder="${LANG==="vi"?"Tìm SP, SKU, Barcode...":"Artikel, SKU, Barcode suchen..."}" value="${esc(INV_SEARCH)}" oninput="if(_IME)return;INV_SEARCH=this.value;render()" onkeydown="if(event.key==='Escape'){INV_SEARCH='';render()}" style="font-size:13px;padding:9px 9px 9px 28px;${INV_SEARCH?'padding-right:28px':''}" autocomplete="off">${INV_SEARCH?`<button class="bi" onclick="INV_SEARCH='';render()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3)">✕</button>`:""}</div></div>`;
+
     // Filter by category
     h += `<div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap;align-items:center">`;
     h += `<span class="st-l" style="margin-right:2px">${LANG==="vi"?"Danh mục":"Kategorie"}:</span>`;
@@ -63,6 +66,12 @@ function renderInventur(vS, aS) {
     h += `</div></div>`;
 
     let arts = D.artikel.filter(a => INV_KAT==="all" || a.kategorien.includes(INV_KAT));
+
+    // Search filter
+    if (INV_SEARCH) {
+      const q = norm(INV_SEARCH);
+      arts = arts.filter(a => norm(a.name).includes(q) || norm(a.name_vi).includes(q) || norm(a.sku).includes(q) || (a.barcodes||[]).some(bc => bc.toLowerCase().includes(q)));
+    }
 
     // Sort
     arts.sort((a, b) => {
