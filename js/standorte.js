@@ -230,16 +230,16 @@ function saveStandort(id, isEdit) {
     if (idx >= 0) D.standorte[idx] = f;
   } else {
     D.standorte.push(f);
-    // Initialize stock fields for all articles
+    // Initialize stock fields for all articles (always 0 for new Standort)
+    const copyFrom = document.getElementById("se_copy_bereiche")?.value || "";
     D.artikel.forEach(a => {
-      if (!a.istBestand[id]) a.istBestand[id] = 0;
-      if (!a.sollBestand[id]) a.sollBestand[id] = 0;
-      if (!a.mindestmenge[id]) a.mindestmenge[id] = 0;
+      a.istBestand[id] = 0;
+      a.sollBestand[id] = 0;
+      a.mindestmenge[id] = 0;
       if (!a.lagerort) a.lagerort = {};
-      if (!a.lagerort[id]) a.lagerort[id] = "";
+      a.lagerort[id] = "";
     });
     // Copy Bereiche from source Standort
-    const copyFrom = document.getElementById("se_copy_bereiche")?.value || "";
     if (copyFrom) {
       const srcBereiche = D.bereiche.filter(b => b.standortId === copyFrom);
       let copied = 0;
