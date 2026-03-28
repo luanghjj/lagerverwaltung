@@ -191,6 +191,12 @@ function editStandort(id) {
   h += `<div class="fg"><label>${LANG==="vi"?"Địa chỉ":"Adresse"}</label><input class="inp" id="se_adresse" value="${esc(f.adresse)}" placeholder="${LANG==="vi"?"Địa chỉ đầy đủ":"Vollständige Adresse"}"></div>`;
   h += `<div class="fg"><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="se_aktiv" ${f.aktiv ? "checked" : ""}> ${t("c.active")}</label></div>`;
 
+  // Copy Bereiche option (only for new Standort)
+  if (!s && D.standorte.length) {
+    h += `<div class="fg"><label>${LANG==="vi"?"Copy khu vực (Bereiche) từ":"Bereiche kopieren von"}</label><select class="sel" id="se_copy_bereiche"><option value="">${LANG==="vi"?"— Không copy —":"— Nicht kopieren —"}</option>${D.standorte.map(x=>`<option value="${x.id}">${esc(x.name)} (${D.bereiche.filter(b=>b.standortId===x.id).length} ${LANG==="vi"?"khu vực":"Bereiche"})</option>`).join("")}</select></div>`;
+    h += `<div style="font-size:10px;color:var(--t3);margin-top:-6px;margin-bottom:8px;padding:0 2px">💡 ${LANG==="vi"?"Tất cả khu vực (Service, Küche, Bar...) sẽ được tạo tự động cho kho mới":"Alle Bereiche (Service, Küche, Bar...) werden automatisch für den neuen Standort erstellt"}</div>`;
+  }
+
   // If editing, show current stats
   if (s) {
     const artCount = D.artikel.filter(a => (a.istBestand[s.id] || 0) > 0).length;
@@ -232,6 +238,27 @@ function saveStandort(id, isEdit) {
       if (!a.lagerort) a.lagerort = {};
       if (!a.lagerort[id]) a.lagerort[id] = "";
     });
+    // Copy Bereiche from source Standort
+    const copyFrom = document.getElementById("se_copy_bereiche")?.value || "";
+    if (copyFrom) {
+      const srcBereiche = D.bereiche.filter(b => b.standortId === copyFrom);
+      let copied = 0;
+      srcBereiche.forEach(src => {
+        const newBr = {
+          id: uid(),
+          name: src.name,
+          name_vi: src.name_vi || "",
+          standortId: id,
+          farbe: src.farbe,
+          icon: src.icon,
+          artikel: src.artikel.map(ba => ({ artikelId: ba.artikelId, soll: ba.soll, quelleId: id }))
+        };
+        D.bereiche.push(newBr);
+        if (typeof sbSaveBereich === "function") sbSaveBereich(newBr).catch(e => console.error("sbSaveBereich:", e));
+        copied++;
+      });
+      if (copied) toast(`📋 ${copied} ${LANG==="vi"?"khu vực đã copy":"Bereiche kopiert"}`, "s");
+    }
   }
   save(); closeModal(); render();
   if (typeof sbSaveStandort === "function") sbSaveStandort(f).catch(e => console.error("sbStandort:", e));
