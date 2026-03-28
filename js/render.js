@@ -105,4 +105,8 @@ function render() {
     const si = document.getElementById("tfHSearch");
     if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
   }
+  if (PAGE === "inventur" && INV_SEARCH) {
+    const si = document.getElementById("inv_search");
+    if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
+  }
 }

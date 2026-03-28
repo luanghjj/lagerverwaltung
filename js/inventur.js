@@ -1,4 +1,15 @@
 // ═══ INVENTUR (Stocktaking) ═══
+function invSearchKey(e) {
+  if (e.key === "Escape") { INV_SEARCH = ""; render(); return; }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    // Find first visible inv-input and focus it
+    setTimeout(() => {
+      const inp = document.querySelector(".inv-input");
+      if (inp) { inp.focus(); inp.select(); }
+    }, 50);
+  }
+}
 function renderInventur(vS, aS) {
   const stId = aS || vS[0]?.id || "";
   const stName = D.standorte.find(s=>s.id===stId)?.name || "";
@@ -43,7 +54,7 @@ function renderInventur(vS, aS) {
     h += `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:600;margin-bottom:3px"><span style="color:var(--ac)">${countedArts}/${totalArts} ${LANG==="vi"?"đã đếm":"gezählt"} (${pctDone}%)</span><span style="color:${diffCount?"var(--rd)":"var(--gn)"}">${diffCount} ${LANG==="vi"?"chênh lệch":"Differenzen"}</span></div><div class="stk-b" style="height:6px"><div class="stk-f" style="width:${pctDone}%;background:${pctDone===100?"var(--gn)":"var(--ac)"}"></div></div></div>`;
 
     // Search bar
-    h += `<div style="margin-bottom:8px"><div class="srch" style="position:relative"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" id="inv_search" placeholder="${LANG==="vi"?"Tìm SP, SKU, Barcode...":"Artikel, SKU, Barcode suchen..."}" value="${esc(INV_SEARCH)}" oninput="if(_IME)return;INV_SEARCH=this.value;render()" onkeydown="if(event.key==='Escape'){INV_SEARCH='';render()}" style="font-size:13px;padding:9px 9px 9px 28px;${INV_SEARCH?'padding-right:28px':''}" autocomplete="off">${INV_SEARCH?`<button class="bi" onclick="INV_SEARCH='';render()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3)">✕</button>`:""}</div></div>`;
+    h += `<div style="margin-bottom:8px"><div class="srch" style="position:relative"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" id="inv_search" placeholder="${LANG==="vi"?"Tìm SP, SKU, Barcode...":"Artikel, SKU, Barcode suchen..."}" value="${esc(INV_SEARCH)}" oninput="if(_IME)return;INV_SEARCH=this.value;render()" onkeydown="invSearchKey(event)" style="font-size:13px;padding:9px 9px 9px 28px;${INV_SEARCH?'padding-right:28px':''}" autocomplete="off">${INV_SEARCH?`<button class="bi" onclick="INV_SEARCH='';render()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3)">✕</button>`:""}</div></div>`;
 
     // Filter by category
     h += `<div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap;align-items:center">`;
