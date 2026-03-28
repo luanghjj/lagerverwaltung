@@ -59,13 +59,13 @@ function showArtikelDetail(id) {
     const liefOpts = a.lieferanten.map(al => { const l=D.lieferanten.find(x=>x.id===al.lieferantId); return `<option value="${al.lieferantId}">${esc(l?.name||"?")}${canP()?" ("+al.preis.toFixed(2)+"€)":""}</option>`; }).join("");
     h += `<div class="cd"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="min-width:100px"><div style="font-weight:600;font-size:12.5px">${esc(s.name)}</div><span class="loc-tag" style="margin-top:2px">${esc(a.lagerort?.[s.id]||"—")}</span></div><div style="flex:1;min-width:110px">${stkBar(ist,soll,min,a.einheit)}${conv?`<div class="unit-conv">= ${esc(conv)}</div>`:""}</div>`;
 
-    // Quick +/- buttons (direct booking)
+    // Quick booking: direct quantity input + book buttons
     const canWE = can(U.role,"eingang"), canWA = can(U.role,"ausgang");
     if (canWE || canWA) {
       h += `<div style="display:flex;gap:3px;align-items:center;flex-shrink:0">`;
-      if (canWA) h += `<button class="btn btn-o" onclick="event.stopPropagation();quickBook('${a.id}','${s.id}','ausgang',1)" style="padding:6px 10px;font-size:14px;font-weight:800;min-width:36px;justify-content:center;color:var(--rd)"${ist<=0?' disabled style="opacity:.3"':""}>−1</button>`;
-      h += `<span style="font-family:var(--m);font-weight:700;font-size:15px;min-width:30px;text-align:center">${ist}</span>`;
-      if (canWE) h += `<button class="btn btn-o" onclick="event.stopPropagation();quickBook('${a.id}','${s.id}','eingang',1)" style="padding:6px 10px;font-size:14px;font-weight:800;min-width:36px;justify-content:center;color:var(--gn)">+1</button>`;
+      if (canWA) h += `<button class="btn btn-o" onclick="event.stopPropagation();quickBook('${a.id}','${s.id}','ausgang',parseInt(document.getElementById('qb_${s.id}')?.value)||1)" style="padding:6px 10px;font-size:13px;font-weight:800;min-width:36px;justify-content:center;color:var(--rd)"${ist<=0?' disabled style="opacity:.3"':""}>↑</button>`;
+      h += `<input class="inp" type="number" min="1" value="1" id="qb_${s.id}" style="width:50px;text-align:center;padding:6px 2px;font-family:var(--m);font-size:15px;font-weight:700" onclick="event.stopPropagation();this.select()">`;
+      if (canWE) h += `<button class="btn btn-o" onclick="event.stopPropagation();quickBook('${a.id}','${s.id}','eingang',parseInt(document.getElementById('qb_${s.id}')?.value)||1)" style="padding:6px 10px;font-size:13px;font-weight:800;min-width:36px;justify-content:center;color:var(--gn)">↓</button>`;
       h += `</div>`;
     }
 
