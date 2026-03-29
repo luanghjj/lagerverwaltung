@@ -20,6 +20,7 @@ async function doLogin() {
   if (user) {
     U = user;
     PAGE = can(U.role, "dashboard") ? "dashboard" : "artikel";
+    if (typeof logActivity === "function") logActivity("login", U.name, {role:U.role});
     render();
     // Đăng ký push notification
     if (typeof initPush === 'function') setTimeout(() => initPush(), 2000);
@@ -32,6 +33,6 @@ async function doLogin() {
   }
 }
 
-function logout() { U = null; render(); }
+function logout() { if (typeof logActivity === "function" && U) logActivity("logout", U.name); U = null; render(); }
 
 // ═══ NAVIGATION ═══

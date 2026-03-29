@@ -27,6 +27,7 @@ function render() {
     {id:"benutzer",l:t("nav.users"),s:"admin",pm:"benutzer",svg:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>'},
     {id:"kategorien",l:t("nav.categories"),s:"admin",pm:"kategorien",svg:'<circle cx="9.5" cy="9.5" r="5.5"/><circle cx="15.5" cy="14.5" r="5.5"/>'},
     {id:"lagerplaetze",l:LANG==="vi"?"Vị trí kho":"Lagerplätze",s:"admin",pm:"standorte",svg:'<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/><rect x="9" y="13" width="6" height="6" rx="1"/>'},
+    {id:"activity_log",l:LANG==="vi"?"Lịch sử":"Protokoll",s:"admin",pm:"benutzer",svg:'<path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/><path d="M3 12h1M20 12h1"/>'},
     {id:"einstellungen",l:t("nav.settings"),s:"admin",pm:"einstellungen",svg:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33"/>'},
   ];
   const secs = {main:t("nav.overview"),lager:t("nav.warehouse"),einkauf:t("nav.purchase"),restaurant:t("rst.restaurant"),admin:t("nav.admin")};
@@ -70,6 +71,7 @@ function render() {
   else if (PAGE === "benutzer") content = can(U.role,"benutzer") ? renderBenutzer() : noAccess;
   else if (PAGE === "kategorien") content = can(U.role,"kategorien") ? renderKategorien() : noAccess;
   else if (PAGE === "lagerplaetze") content = can(U.role,"standorte") ? renderLagerplaetze() : noAccess;
+  else if (PAGE === "activity_log") content = can(U.role,"benutzer") ? renderActivityLog(vS, aS) : noAccess;
   else if (PAGE === "einstellungen") content = can(U.role,"einstellungen") ? renderEinstellungen() : noAccess;
   else content = `<div class="mn-c" style="padding:40px;text-align:center;color:var(--t3)">Seite: ${PAGE}</div>`;
 

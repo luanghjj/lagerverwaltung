@@ -306,6 +306,7 @@ function buchenAlle(typ) {
   const summaryLines = BATCH.slice(0,5).map(b => { const a=D.artikel.find(x=>x.id===b.artikelId); return `${b.menge}× ${artN(a)}`; });
   const summaryText = summaryLines.join(", ") + (BATCH.length > 5 ? ` +${BATCH.length-5}…` : "");
   toast(`${isE?"↓":"↑"} ${BATCH.length} ${t("c.article")}: ${summaryText}`,"s");
+  if (typeof logActivity === "function") logActivity(typ, `${BATCH.length} Artikel @ ${stName}${ref?" ("+ref+")":""}`, {count:BATCH.length, standort:stName, ref});
   BATCH = [];
   render();
   }); // withLock

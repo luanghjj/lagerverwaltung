@@ -433,12 +433,14 @@ function aeSave(id, isEdit) {
   closeModal();
   render();
   if (typeof sbSaveArtikel === "function") sbSaveArtikel(f).catch(e => console.error("sbSaveArtikel:", e));
+  if (typeof logActivity === "function") logActivity(isEdit?"art.edit":"art.create", `${artN(f)} (${f.sku})`, {id:f.id,name:f.name,sku:f.sku});
   toast("✓","s");
   } catch(err) { console.error("aeSave error:", err); toast("❌ Fehler: " + err.message, "e"); }
 }
 function delArtikel(id) {
   const a = D.artikel.find(x=>x.id===id);
   cConfirm(`${artN(a)} ${t("c.delete")}?`, () => {
+    if (typeof logActivity === "function") logActivity("art.delete", artN(a), {id,name:a?.name,sku:a?.sku});
     D.artikel = D.artikel.filter(x=>x.id!==id);
     save(); render();
     if (typeof sb !== "undefined") sb.from("artikel").update({ deleted_at: new Date().toISOString() }).eq("id", id).then(() => {}).catch(e => console.error("sbDelArtikel:", e));
@@ -492,4 +494,5 @@ function quickBook(artId, stId, typ, menge) {
   showArtikelDetail(artId);
   const stName = D.standorte.find(s=>s.id===stId)?.name||"";
   toast(`${isE?"+":"-"}${menge} ${artN(a)} (${stName})`,"s");
+  if (typeof logActivity === "function") logActivity("quick", `${isE?"+":"-"}${menge} ${artN(a)} @ ${stName}`, {artikel:artN(a),menge,typ,standort:stName});
 }
