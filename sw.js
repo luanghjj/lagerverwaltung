@@ -1,5 +1,5 @@
 // ═══ サービスワーカー — 在庫管理 PWA ═══
-const CACHE_NAME = 'lager-v1.9.9';
+const CACHE_NAME = 'lager-v2.0.0';
 const ASSETS = [
   './',
   './index.html',
@@ -39,6 +39,7 @@ const ASSETS = [
   './js/telegram.js',
   './js/offline.js',
   './js/push.js',
+  './js/realtime.js',
   './js/init.js'
 ];
 

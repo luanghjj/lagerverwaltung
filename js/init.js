@@ -45,4 +45,7 @@ let APP_ONLINE = true;
 
   // プッシュ通知の初期化
   if (typeof initPush === 'function') setTimeout(() => initPush(), 2000);
+
+  // Realtime sync initialization
+  if (APP_ONLINE && typeof initRealtime === 'function') setTimeout(() => initRealtime(), 1000);
 })();

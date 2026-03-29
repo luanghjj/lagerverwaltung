@@ -2,7 +2,9 @@
 const SUPABASE_URL = "https://wetpcdsiaodnoeaekitu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldHBjZHNpYW9kbm9lYWVraXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MDc3NjksImV4cCI6MjA4Njk4Mzc2OX0.Rod__xCzdTYt7bnd77nYHJ6yNFwgArt1MACqSuQgSCg";
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  realtime: { params: { eventsPerSecond: 2 } }
+});
 
 // ── Generic fetch helper ──
 async function sbFetch(table, query) {

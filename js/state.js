@@ -39,7 +39,7 @@ function migrate() {
   }
   save();
 }
-function save() { try { localStorage.setItem(SK, JSON.stringify(D)); } catch {} }
+function save() { try { localStorage.setItem(SK, JSON.stringify(D)); if (typeof rtMarkLocalChange === "function") rtMarkLocalChange(); } catch {} }
 function applyTheme() { document.documentElement.className = THEME === "light" ? "light" : ""; }
 function setTheme(t) { THEME = t; D.theme = t; save(); applyTheme(); render(); }
 
