@@ -12,3 +12,17 @@ Thumbs.db
 
 # Node (nếu có)
 node_modules/
+
+# Product images (uploaded to Supabase, too large for git)
+product_images/
+
+# Upload utility scripts
+upload_images.py
+upload_images.mjs
+upload_staiger_jfc.py
+upload_metro.py
+update_images.html
+Nb/
+
+# Invoice PDFs (too large for git)
+Rechnung/
