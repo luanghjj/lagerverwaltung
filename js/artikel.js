@@ -15,7 +15,12 @@ function renderArtikel(vS, aS) {
     return true;
   });
 
-  if (q) h += `<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${fil.length} ${LANG==="vi"?"kết quả cho":"Ergebnis(se) für"} „${esc(ART_SEARCH)}"${fil.length!==D.artikel.length?` <span style="color:var(--t3)">(${LANG==="vi"?"trong tổng":"von"} ${D.artikel.length})</span>`:""}</div>`;
+  if (q) {
+    h += `<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${fil.length} ${LANG==="vi"?"kết quả cho":"Ergebnis(se) für"} „${esc(ART_SEARCH)}"${fil.length!==D.artikel.length?` <span style="color:var(--t3)">(${LANG==="vi"?"trong tổng":"von"} ${D.artikel.length})</span>`:""}</div>`;
+    if (!fil.length && /^\d{8,}$/.test(ART_SEARCH.trim()) && can(U.role,"artikel")) {
+      h += `<div style="text-align:center;padding:16px"><div style="margin-bottom:8px;color:var(--t3)">${LANG==="vi"?"Mã vạch chưa có sản phẩm":"Barcode nicht gefunden"}: <b>${esc(ART_SEARCH.trim())}</b></div><button class="btn btn-p" onclick="editArtikelWithBarcode('${esc(ART_SEARCH.trim())}')">${LANG==="vi"?"+ Tạo sản phẩm mới":"+ Neuen Artikel anlegen"}</button></div>`;
+    }
+  }
 
   if (ART_VIEW === "art") h += renderArtikelTable(fil, stC, aS);
   else if (ART_VIEW === "kat") h += renderArtikelByKat(fil, stC, aS);

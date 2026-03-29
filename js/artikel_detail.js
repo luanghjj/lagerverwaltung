@@ -151,6 +151,15 @@ function addInterTransfer(artId, vonStId) {
   );
 }
 
+// Open new article editor with barcode pre-filled
+function editArtikelWithBarcode(barcode) {
+  editArtikel();
+  setTimeout(() => {
+    const f = window._aeForm;
+    if (f) { f.barcodes = [barcode]; aeRenderBarcodes(); }
+  }, 50);
+}
+
 function editArtikel(id) {
   const a = id ? D.artikel.find(x=>x.id===id) : null;
   const f = a ? JSON.parse(JSON.stringify(a)) : {id:uid(),name:"",name_vi:"",sku:"",barcodes:[],kategorien:[],bilder:[],beschreibung:"",beschreibung_vi:"",lagerort:{},istBestand:{},sollBestand:{},mindestmenge:{},einheit:"Stk.",packUnit:"",packSize:0,lieferanten:[]};
@@ -324,7 +333,9 @@ function aeRemLief(i) {
 }
 
 function aeSave(id, isEdit) {
+  try {
   const f = window._aeForm;
+  if (!f) { toast("Error: Form nicht gefunden","e"); return; }
   f.name = $("#ae_name")?.value || "";
   f.name_vi = $("#ae_name_vi")?.value || "";
   f.sku = $("#ae_sku")?.value || "";
@@ -423,6 +434,7 @@ function aeSave(id, isEdit) {
   render();
   if (typeof sbSaveArtikel === "function") sbSaveArtikel(f).catch(e => console.error("sbSaveArtikel:", e));
   toast("✓","s");
+  } catch(err) { console.error("aeSave error:", err); toast("❌ Fehler: " + err.message, "e"); }
 }
 function delArtikel(id) {
   const a = D.artikel.find(x=>x.id===id);

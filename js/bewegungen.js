@@ -65,7 +65,17 @@ function bewSearch(typ) {
   if (!q) { $("#bew_results").innerHTML = ""; return; }
   const stId = $("#bew_standort")?.value || "";
   const results = D.artikel.filter(a => norm(a.name).includes(q) || norm(a.name_vi).includes(q) || norm(a.sku).includes(q) || (a.barcodes||[]).some(bc => bc.toLowerCase().includes(q))).slice(0,10);
-  if (!results.length) { $("#bew_results").innerHTML = `<div class="live-results" style="padding:12px;text-align:center;color:var(--t3)">—</div>`; return; }
+  if (!results.length) {
+    const raw = $("#bew_search")?.value?.trim() || "";
+    const isBarcode = /^\d{8,}$/.test(raw);
+    let nh = `<div class="live-results" style="padding:12px;text-align:center;color:var(--t3)">`;
+    if (isBarcode && can(U.role,"artikel")) {
+      nh += `<div style="margin-bottom:6px">${LANG==="vi"?"Không tìm thấy SP với mã":"Kein Artikel mit Barcode"} <b>${esc(raw)}</b></div>`;
+      nh += `<button class="btn btn-p btn-sm" onclick="editArtikelWithBarcode('${esc(raw)}')">${LANG==="vi"?"+ Tạo sản phẩm mới":"+ Neuen Artikel anlegen"}</button>`;
+    } else { nh += `—`; }
+    nh += `</div>`;
+    $("#bew_results").innerHTML = nh; return;
+  }
   let h = `<div class="live-results">`;
   results.forEach((a,i) => {
     const ist = a.istBestand[stId]||0, soll = a.sollBestand[stId]||0, min = a.mindestmenge[stId]||0;
@@ -83,6 +93,12 @@ function bewSearchKey(e, typ) {
     const q = norm($("#bew_search")?.value||"");
     const a = D.artikel.find(a => norm(a.name).includes(q) || norm(a.name_vi).includes(q) || norm(a.sku) === q || (a.barcodes||[]).some(bc => bc.toLowerCase() === q));
     if (a) addToBatch(a.id, typ);
+    else {
+      const raw = $("#bew_search")?.value?.trim() || "";
+      if (/^\d{8,}$/.test(raw) && can(U.role,"artikel")) {
+        cConfirm(LANG==="vi"?`Mã ${raw} chưa có SP. Tạo mới?`:`Barcode ${raw} nicht gefunden. Neuen Artikel anlegen?`, () => editArtikelWithBarcode(raw));
+      }
+    }
   } else if (e.key === "Escape") {
     $("#bew_search").value = "";
     $("#bew_results").innerHTML = "";
