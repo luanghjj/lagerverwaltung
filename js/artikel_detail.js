@@ -235,25 +235,62 @@ function aeUploadImgs(files) {
   if (remaining <= 0) { toast(LANG==="vi"?"Tối đa 5 ảnh":"Max. 5 Bilder","e"); return; }
   const toProcess = Math.min(files.length, remaining);
   let processed = 0;
+  toast(`⏳ ${LANG==="vi"?"Đang tải ảnh...":"Bilder werden hochgeladen..."}`,"i");
+
   for (let i = 0; i < toProcess; i++) {
     const file = files[i];
     if (!file.type.startsWith("image/")) continue;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = new Image();
-      img.onload = function() {
-        const maxS = 400; let w = img.width, h = img.height;
-        if (w > maxS || h > maxS) { const r = Math.min(maxS/w, maxS/h); w = Math.round(w*r); h = Math.round(h*r); }
-        const c = document.createElement("canvas"); c.width = w; c.height = h;
-        c.getContext("2d").drawImage(img, 0, 0, w, h);
-        f.bilder.push(c.toDataURL("image/jpeg", 0.75));
+
+    // Upload to Supabase Storage
+    if (typeof sbUploadImage === "function") {
+      const stName = D.standorte.find(s => s.id === (STF !== "all" ? STF : D.standorte[0]?.id))?.name || "APP";
+      const artLabel = f.name || f.sku || "img";
+      sbUploadImage(file, `${stName}_${artLabel}`).then(url => {
+        if (url) {
+          f.bilder.push(url);
+          processed++;
+          if (processed >= toProcess) {
+            aeRenderImgs();
+            toast(`✅ ${processed} ${LANG==="vi"?"ảnh đã tải lên":"Bild(er) hochgeladen"}`,"s");
+          }
+        } else {
+          // Fallback: save as base64 if Storage upload fails
+          _aeUploadBase64(file, f, () => {
+            processed++;
+            if (processed >= toProcess) { aeRenderImgs(); toast(`${processed} ${LANG==="vi"?"ảnh (lokal)":"Bild(er) (lokal)"}`,"i"); }
+          });
+        }
+      }).catch(() => {
+        _aeUploadBase64(file, f, () => {
+          processed++;
+          if (processed >= toProcess) { aeRenderImgs(); toast(`${processed} ${LANG==="vi"?"ảnh (lokal)":"Bild(er) (lokal)"}`,"i"); }
+        });
+      });
+    } else {
+      _aeUploadBase64(file, f, () => {
         processed++;
         if (processed >= toProcess) { aeRenderImgs(); toast(`${processed} ${LANG==="vi"?"ảnh đã tải":"Bild(er) geladen"}`,"s"); }
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+      });
+    }
   }
+}
+
+// Fallback: base64 (only when Storage unavailable)
+function _aeUploadBase64(file, f, cb) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const maxS = 400; let w = img.width, h = img.height;
+      if (w > maxS || h > maxS) { const r = Math.min(maxS/w, maxS/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      f.bilder.push(c.toDataURL("image/jpeg", 0.75));
+      if (cb) cb();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function aeAddImgUrl() {
@@ -433,6 +470,8 @@ function aeSave(id, isEdit) {
   closeModal();
   render();
   if (typeof sbSaveArtikel === "function") sbSaveArtikel(f).catch(e => console.error("sbSaveArtikel:", e));
+  // Auto-migrate base64 images to Storage URLs (fire & forget)
+  if (typeof sbMigrateBase64 === "function") sbMigrateBase64(f);
   if (typeof logActivity === "function") logActivity(isEdit?"art.edit":"art.create", `${artN(f)} (${f.sku})`, {id:f.id,name:f.name,sku:f.sku});
   toast("✓","s");
   } catch(err) { console.error("aeSave error:", err); toast("❌ Fehler: " + err.message, "e"); }

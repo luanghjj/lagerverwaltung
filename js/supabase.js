@@ -531,4 +531,41 @@ async function sbUploadImage(file, artikelName) {
   } catch (e) { console.error("[sbUploadImage]", e); return ""; }
 }
 
+// Auto-convert base64 images to Storage URLs
+async function sbMigrateBase64(a) {
+  if (!a?.bilder?.length) return;
+  let changed = false;
+  const stName = D.standorte.find(s => s.id === (STF !== "all" ? STF : D.standorte[0]?.id))?.name || "APP";
+
+  for (let i = 0; i < a.bilder.length; i++) {
+    const img = a.bilder[i];
+    if (!img.startsWith("data:image")) continue; // Skip URLs, only convert base64
+
+    try {
+      // Convert base64 to blob
+      const resp = await fetch(img);
+      const blob = await resp.blob();
+      const safeName = `${stName}_${(a.name || a.sku || "img").replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+      const fileName = `${safeName}_${Date.now()}.jpg`;
+
+      const { data, error } = await sb.storage.from("product-images").upload(fileName, blob, { cacheControl: "3600", upsert: true, contentType: "image/jpeg" });
+      if (error) { console.warn("[sbMigrate]", error.message); continue; }
+
+      const { data: urlData } = sb.storage.from("product-images").getPublicUrl(data.path);
+      a.bilder[i] = urlData.publicUrl;
+      changed = true;
+      console.log(`[sbMigrate] ${a.name}: base64 → ${urlData.publicUrl}`);
+    } catch (e) { console.warn("[sbMigrate]", e.message); }
+  }
+
+  if (changed) {
+    // Update DB with new URLs
+    await sb.from("artikel").update({ bilder: a.bilder }).eq("id", a.id);
+    // Update local data
+    const local = D.artikel.find(x => x.id === a.id);
+    if (local) local.bilder = [...a.bilder];
+    save();
+  }
+}
+
 console.log("✅ Supabase client ready:", SUPABASE_URL);
