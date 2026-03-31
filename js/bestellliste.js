@@ -5,13 +5,8 @@ function renderBestellliste(vS, aS) {
 
   // Auto-add articles below Mindestmenge
   const sids = aS ? [aS] : vS.map(s=>s.id);
-  // ── Bereiche-Filter: live aus D.users (realtime-aktuell, nicht gecachtes U) ──
-  const _liveUser = D.users.find(x => x.id === U.id) || U;
-  const userBr = _liveUser.bereiche || ["all"];
-  const brArtikelIds = userBr.includes("all") ? null : new Set(
-    D.bereiche.filter(br => userBr.includes(br.id) && sids.includes(br.standortId))
-              .flatMap(br => br.artikel.map(ba => ba.artikelId))
-  );
+  // ── Bereiche-Filter: Staff sees only articles in their Bereiche ──
+  const brArtikelIds = getBereicheArtikelIds(sids);
   const canSeeArtikelBL = (artikelId) => !brArtikelIds || brArtikelIds.has(artikelId);
   D.artikel.forEach(a => {
     if (!canSeeArtikelBL(a.id)) return; // skip artikel outside user's bereiche

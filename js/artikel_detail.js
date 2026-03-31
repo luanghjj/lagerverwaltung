@@ -3,6 +3,13 @@ function showArtikelDetail(id) {
   const a = D.artikel.find(x=>x.id===id);
   if (!a) return;
   const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s=>U.standorte.includes(s.id));
+  // ═══ BEREICHE FILTER: Staff can only view articles in their Bereiche ═══
+  const _detailSids = vS.map(s=>s.id);
+  const _detailBrFilter = getBereicheArtikelIds(_detailSids);
+  if (_detailBrFilter && !_detailBrFilter.has(a.id)) {
+    toast(LANG==="vi"?"Bạn không có quyền xem sản phẩm này":"Kein Zugriff auf diesen Artikel","e");
+    return;
+  }
   let h = `<div class="mo-ov" onclick="closeModal()"><div class="mo mo-xl" onclick="event.stopPropagation()"><div class="mo-h"><div class="mo-ti">${esc(artN(a))}</div><button class="bi" onclick="closeModal()">✕</button></div><div class="mo-b">`;
   h += `<div style="display:grid;grid-template-columns:${a.bilder?.length?"1fr 1fr":"1fr"};gap:14px">`;
   if (a.bilder?.length) {

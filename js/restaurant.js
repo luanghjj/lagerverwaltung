@@ -31,7 +31,7 @@ function renderRstBereiche(vS, aS) {
       const artCount = br.artikel.length;
       let vollCount=0,fehlCount=0,totalFehl=0;
       br.artikel.forEach(ba => {
-        const a = D.artikel.find(x=>x.id===ba.artikelId);
+        const a = D.artikel.find(x=>x.isao rôid===ba.artikelId);
         const lagerIst = a?.istBestand[br.standortId]||0;
         if (lagerIst >= ba.soll) vollCount++; else { fehlCount++; totalFehl += Math.max(0, ba.soll-lagerIst); }
       });

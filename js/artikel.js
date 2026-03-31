@@ -9,7 +9,7 @@ function renderArtikel(vS, aS) {
   // Filter articles by status:
   // - staff: only sees active + own pending/rejected
   // - admin/manager: all, filtered by sfil
-  const visibleArt = D.artikel.filter(a => {
+  let visibleArt = D.artikel.filter(a => {
     const st = a.status || "active";
     if (canApprove) {
       if (sfil === "all") return true;
@@ -18,6 +18,17 @@ function renderArtikel(vS, aS) {
       return st === "active" || a.createdBy === U.id;
     }
   });
+
+  // ═══ BEREICHE FILTER: Staff only sees articles assigned to their Bereiche ═══
+  const _artSids = aS ? [aS] : stC.map(s=>s.id);
+  const _staffBrFilter = getBereicheArtikelIds(_artSids);
+  if (_staffBrFilter) {
+    visibleArt = visibleArt.filter(a => _staffBrFilter.has(a.id));
+  }
+  // For Admin/Manager: compute unassigned articles for warning
+  const _allBrIds = getAllBereicheArtikelIds(_artSids);
+  window._artBereicheIds = _allBrIds; // used by sub-render functions for badge
+  const _unassignedCount = canApprove ? visibleArt.filter(a => !_allBrIds.has(a.id)).length : 0;
 
   const pendingCount = D.artikel.filter(a => (a.status || "active") === "pending").length;
   const rejectedCount = D.artikel.filter(a => (a.status || "active") === "rejected").length;
@@ -48,6 +59,11 @@ function renderArtikel(vS, aS) {
         }
       });
     }
+  }
+
+  // ═══ BANNER: Admin/Manager warning for unassigned articles ═══
+  if (_unassignedCount > 0) {
+    h += `<div style="background:var(--yA);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>⚠️</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--yl)">${_unassignedCount} ${LANG==="vi"?"sản phẩm chưa thuộc khu vực nào":"Artikel keinem Bereich zugewiesen"}</div><div style="font-size:10.5px;color:var(--t3)">${LANG==="vi"?"Staff sẽ không thấy các SP này":"Staff kann diese Artikel nicht sehen"}</div></div></div>`;
   }
 
   h += `<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"><div class="srch" style="flex:1;min-width:150px;position:relative"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" placeholder="${t("c.search")}" id="artSearch" value="${esc(ART_SEARCH)}" oninput="artSearchInput(this)" style="padding-right:${ART_SEARCH?'28px':'9px'}">${ART_SEARCH?`<button class="bi" onclick="artSearchClear()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3)">✕</button>`:""}</div></div>`;
@@ -88,9 +104,10 @@ function renderArtikelTable(fil, stC, aS) {
     const locStr = aS ? (a.lagerort?.[aS]||"—") : stC.map(s=>a.lagerort?.[s.id]).filter(Boolean).join(" | ") || "—";
     const artStatus = a.status || "active";
     const statusBadge = artStatus === "pending" ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">🟡 ${t("art.pending")}</span>` : artStatus === "rejected" ? `<span style="font-size:9px;padding:1px 5px;background:var(--rA);color:var(--rd);border-radius:3px;font-weight:700;margin-left:4px">🔴 ${t("art.rejected")}</span>` : "";
+    const brBadge = canApprove && window._artBereicheIds && !window._artBereicheIds.has(a.id) ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">⚠ ${LANG==="vi"?"Chưa có KV":"Kein Bereich"}</span>` : "";
     h += `<tr class="art-row" onclick="showArtikelDetail('${a.id}')" style="${artStatus==='pending'?'opacity:.85':artStatus==='rejected'?'opacity:.7':''}">`;
     h += `<td><div class="th">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div></td>`;
-    h += `<td><div style="font-weight:600">${esc(artN(a))}${statusBadge}</div>`;
+    h += `<td><div style="font-weight:600">${esc(artN(a))}${statusBadge}${brBadge}</div>`;
     if (LANG === "de" && a.name_vi) h += `<div style="font-size:10px;color:var(--t3)">${esc(a.name_vi)}</div>`;
     if (LANG === "vi") h += `<div style="font-size:10px;color:var(--t3)">${esc(a.name)}</div>`;
     h += `<div style="font-size:9.5px;color:var(--t3);font-family:var(--m)">${esc(a.sku)}</div></td>`;
@@ -165,8 +182,9 @@ function renderArtikelByKat(fil, stC, aS) {
       const bp = a.lieferanten.length ? Math.min(...a.lieferanten.map(l=>l.preis)) : null;
       const locStr = aS ? (a.lagerort?.[aS]||"—") : stC.map(s=>a.lagerort?.[s.id]).filter(Boolean).join(" | ") || "—";
       h += `<tr class="art-row" style="border-bottom:1px solid var(--bd)" onclick="showArtikelDetail('${a.id}')">`;
+      const _katBrBadge = (U.role==="admin"||U.role==="manager") && window._artBereicheIds && !window._artBereicheIds.has(a.id) ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">⚠ ${LANG==="vi"?"Chưa có KV":"Kein Bereich"}</span>` : "";
       h += `<td style="padding:5px 8px"><div class="th">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div></td>`;
-      h += `<td style="padding:5px 8px"><div style="font-weight:600">${esc(artN(a))}</div><div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a.sku)}</div></td>`;
+      h += `<td style="padding:5px 8px"><div style="font-weight:600">${esc(artN(a))}${_katBrBadge}</div><div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a.sku)}</div></td>`;
       h += `<td style="padding:5px 8px"><span class="loc-tag">${esc(locStr)}</span></td>`;
       stC.forEach(s => {
         const ist=a.istBestand[s.id]||0,soll=a.sollBestand[s.id]||0,min=a.mindestmenge[s.id]||0;
@@ -242,7 +260,8 @@ function renderArtikelByLagerort(fil, stC, aS) {
       const st = stkSt(ist, soll, min);
       h += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--bd);cursor:pointer" onclick="showArtikelDetail('${a.id}')">`;
       h += `<div class="th" style="width:28px;height:28px;flex-shrink:0">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div>`;
-      h += `<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px">${esc(artN(a))}</div><div style="font-size:9px;color:var(--t3)">${esc(a.sku)} · ${esc(a.einheit)}</div></div>`;
+      const _lagBrBadge = (U.role==="admin"||U.role==="manager") && window._artBereicheIds && !window._artBereicheIds.has(a.id) ? ` <span style="font-size:8px;padding:1px 4px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700">⚠</span>` : "";
+      h += `<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px">${esc(artN(a))}${_lagBrBadge}</div><div style="font-size:9px;color:var(--t3)">${esc(a.sku)} · ${esc(a.einheit)}</div></div>`;
       h += `<div style="text-align:right;flex-shrink:0"><div style="font-family:var(--m);font-weight:700;font-size:13px;color:${st.c}">${ist}/${soll} ${esc(a.einheit)}</div>`;
       if (min > 0 && ist <= min) h += `<div style="font-size:9px;color:var(--rd)">⚠ min ${min}</div>`;
       h += `</div></div>`;
@@ -323,8 +342,9 @@ function renderArtikelByLief(fil, stC, aS) {
       const rowId = `pc_${liefId}_${a.id}`;
 
       h += `<tr class="art-row" style="border-bottom:${hasMultiple?'none':'1px solid var(--bd)'}" onclick="showArtikelDetail('${a.id}')">`;
+      const _liefBrBadge = (U.role==="admin"||U.role==="manager") && window._artBereicheIds && !window._artBereicheIds.has(a.id) ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">⚠ ${LANG==="vi"?"Chưa có KV":"Kein Bereich"}</span>` : "";
       h += `<td style="padding:5px 8px"><div class="th">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div></td>`;
-      h += `<td style="padding:5px 8px"><div style="font-weight:600">${esc(artN(a))}</div><div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a.sku)}</div></td>`;
+      h += `<td style="padding:5px 8px"><div style="font-weight:600">${esc(artN(a))}${_liefBrBadge}</div><div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a.sku)}</div></td>`;
       stC.forEach(s => {
         const ist=a.istBestand[s.id]||0,soll=a.sollBestand[s.id]||0,min=a.mindestmenge[s.id]||0;
         h += `<td style="padding:5px 8px;min-width:90px">${stkBar(ist,soll,min,a.einheit)}</td>`;

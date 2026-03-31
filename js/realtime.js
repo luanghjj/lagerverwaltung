@@ -105,3 +105,4 @@ function showSyncToast() {
 window.addEventListener("beforeunload", () => {
   if (_rtChannel) { _rtChannel.unsubscribe(); _rtChannel = null; }
 });
+n

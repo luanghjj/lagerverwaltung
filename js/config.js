@@ -206,3 +206,19 @@ function stkBar(ist,soll,min,u){const s=stkSt(ist,soll,min);return`<div class="s
 const BT={eingang:{s:"WE",c:"#10B981",i:"↓"},ausgang:{s:"WA",c:"#EF4444",i:"↑"},korrektur_plus:{s:"K+",c:"#3B82F6",i:"±"},korrektur_minus:{s:"K−",c:"#F59E0B",i:"±"},umbuchung:{s:"UB",c:"#8B5CF6",i:"⇄"}};
 const ROLE_PERMS={admin:["all"],manager:["dashboard","auswertung","artikel","bestellungen","bewegungen","transfer","inventur","lieferanten","lieferanten.detail","kategorien","bestellliste","export","bereiche","preise","eingang","ausgang"],staff:["dashboard","artikel.read","eingang","ausgang","bestellungen.create","lieferanten.read","bestellliste","bereiche.view"]};
 const can=(r,a)=>{const userPerms=U?.perms;const p=userPerms||ROLE_PERMS[r]||[];return p.includes("all")||p.some(x=>a===x||a.startsWith(x+"."));};
+
+// ═══ BEREICHE-FILTER HELPERS ═══
+// Returns Set of artikelIds in user's Bereiche (for Staff only). null = no filter (Admin/Manager).
+function getBereicheArtikelIds(sids) {
+  if (!U || U.role === "admin" || U.role === "manager") return null;
+  const _liveUser = D.users.find(x => x.id === U.id) || U;
+  const userBr = _liveUser.bereiche || ["all"];
+  if (userBr.includes("all")) {
+    return new Set(D.bereiche.filter(br => sids.includes(br.standortId)).flatMap(br => (br.artikel||[]).map(ba => ba.artikelId)));
+  }
+  return new Set(D.bereiche.filter(br => userBr.includes(br.id) && sids.includes(br.standortId)).flatMap(br => (br.artikel||[]).map(ba => ba.artikelId)));
+}
+// Returns Set of ALL artikelIds assigned to any Bereich (for admin/manager badge)
+function getAllBereicheArtikelIds(sids) {
+  return new Set(D.bereiche.filter(br => sids.includes(br.standortId)).flatMap(br => (br.artikel||[]).map(ba => ba.artikelId)));
+}
