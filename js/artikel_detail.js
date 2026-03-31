@@ -203,6 +203,32 @@ function editArtikel(id) {
   });
   h += `</div></div>`;
 
+  // Bereiche
+  const canEditBR = !!(U && (U.role === "admin" || U.role === "manager"));
+  window._aeBereicheChecked = new Set(
+    (D.bereiche||[]).filter(br => (br.artikel||[]).some(ba => ba.artikelId === f.id)).map(br => br.id)
+  );
+  const aeBrStandorte = U.standorte.includes("all") ? D.standorte.filter(s=>s.aktiv) : D.standorte.filter(s=>s.aktiv && U.standorte.includes(s.id));
+  const hasBereiche = aeBrStandorte.some(s => (D.bereiche||[]).some(br => br.standortId === s.id));
+  if (hasBereiche) {
+    h += `<div class="fg" style="margin-bottom:6px"><div style="font-size:9.5px;font-weight:700;color:var(--t2);margin-bottom:6px;text-transform:uppercase">${LANG==="vi"?"Khu vực sử dụng":"Bereiche"}</div>`;
+    aeBrStandorte.forEach(s => {
+      const sBereiche = (D.bereiche||[]).filter(br => br.standortId === s.id);
+      if (!sBereiche.length) return;
+      h += `<div style="font-size:10px;font-weight:600;color:var(--ac);margin:4px 0 3px">${esc(s.name)}</div><div class="mc">`;
+      sBereiche.forEach(br => {
+        const checked = window._aeBereicheChecked.has(br.id);
+        if (canEditBR) {
+          h += `<div class="mc-it ${checked?"checked":""}" id="ae_br_${br.id}" onclick="aeTogBereich('${br.id}',this)">${checked?"✓":"○"} ${esc(br.name)}</div>`;
+        } else if (checked) {
+          h += `<div class="mc-it checked" style="pointer-events:none;opacity:.7">✓ ${esc(br.name)}</div>`;
+        }
+      });
+      h += `</div>`;
+    });
+    h += `</div>`;
+  }
+
   // Stock per location (only user's standorte)
   const aeStandorte = U.standorte.includes("all") ? D.standorte.filter(s=>s.aktiv) : D.standorte.filter(s=>s.aktiv && U.standorte.includes(s.id));
   h += `<div style="font-size:9.5px;font-weight:700;color:var(--t2);margin:8px 0 4px;text-transform:uppercase">${LANG==="vi"?"Tồn kho theo CN":"Bestände pro Standort"}</div>`;
@@ -358,6 +384,19 @@ function aeTogKat(kId, el) {
   else { f.kategorien.push(kId); el.classList.add("checked"); el.textContent = "✓ " + el.textContent.substring(2); }
 }
 
+function aeTogBereich(brId, el) {
+  if (!window._aeBereicheChecked) return;
+  if (window._aeBereicheChecked.has(brId)) {
+    window._aeBereicheChecked.delete(brId);
+    el.classList.remove("checked");
+    el.textContent = "○ " + el.textContent.substring(2);
+  } else {
+    window._aeBereicheChecked.add(brId);
+    el.classList.add("checked");
+    el.textContent = "✓ " + el.textContent.substring(2);
+  }
+}
+
 function aeAddLief() {
   const f = window._aeForm;
   const i = f.lieferanten.length;
@@ -473,10 +512,24 @@ function aeSave(id, isEdit) {
     }
     D.artikel.push(f);
   }
+  // Update Bereiche membership (Admin/Manager only)
+  const _changedBereiche = [];
+  if ((U.role === "admin" || U.role === "manager") && window._aeBereicheChecked) {
+    (D.bereiche||[]).forEach(br => {
+      const wasIn = (br.artikel||[]).some(ba => ba.artikelId === f.id);
+      const nowIn = window._aeBereicheChecked.has(br.id);
+      if (wasIn === nowIn) return;
+      br.artikel = br.artikel || [];
+      if (nowIn) br.artikel.push({artikelId: f.id, soll: 0});
+      else br.artikel = br.artikel.filter(ba => ba.artikelId !== f.id);
+      _changedBereiche.push(br);
+    });
+  }
   save();
   closeModal();
   render();
   if (typeof sbSaveArtikel === "function") sbSaveArtikel(f).catch(e => console.error("sbSaveArtikel:", e));
+  _changedBereiche.forEach(br => { if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e)); });
   // Auto-migrate base64 images to Storage URLs (fire & forget)
   if (typeof sbMigrateBase64 === "function") sbMigrateBase64(f);
   if (typeof logActivity === "function") logActivity(isEdit?"art.edit":"art.create", `${artN(f)} (${f.sku})`, {id:f.id,name:f.name,sku:f.sku});

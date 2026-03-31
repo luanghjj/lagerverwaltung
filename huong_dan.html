@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hướng Dẫn Sử Dụng - Okyu Gastro Group</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0B0E14;
+            --bg-card: #151A23;
+            --bg-card-hover: #1A212D;
+            --text-main: #F3F4F6;
+            --text-muted: #9CA3AF;
+            --primary: #3B82F6;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --border: #2D3748;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+            padding-bottom: 80px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #3B82F6, #10B981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 30px 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary);
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            background-color: var(--bg-card-hover);
+            border-color: #3B82F655;
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+
+        .icon-box {
+            width: 44px;
+            height: 44px;
+            background-color: rgba(59, 130, 246, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .icon-box.success { background-color: rgba(16, 185, 129, 0.1); }
+        .icon-box.warning { background-color: rgba(245, 158, 11, 0.1); }
+        .icon-box.danger { background-color: rgba(239, 68, 68, 0.1); }
+
+        .card-title {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .card-content ul {
+            list-style: none;
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        .card-content li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 8px;
+        }
+
+        .card-content li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 4px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+        }
+
+        .badge.offline {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        
+        .badge.pending {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .alert-box {
+            background-color: rgba(239, 68, 68, 0.05);
+            border-left: 4px solid var(--danger);
+            padding: 15px;
+            border-radius: 0 var(--radius) var(--radius) 0;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .alert-title {
+            color: var(--danger);
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-scroll-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            opacity: 0.8;
+            pointer-events: auto;
+        }
+
+        .btn-scroll-top:active {
+            transform: scale(0.95);
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            .card { padding: 15px; }
+            h1 { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Trợ lý Okyu Gastro</h1>
+        <p>Hướng dẫn sử dụng dành cho Nhân viên (Mitarbeiter)</p>
+    </header>
+
+    <div class="section-title">🔑 1. Đăng nhập hệ thống</div>
+    <div class="card">
+        <div class="card-header">
+            <div class="icon-box" style="color: var(--primary);">🔒</div>
+            <div class="card-title">Mã PIN cá nhân</div>
+        </div>
+        <div class="card-content">
+            <ul>
+                <li>Mỗi nhân viên sử dụng mã <strong>PIN 6 số</strong> riêng biệt.</li>
+                <li>Không chia sẻ PIN. Nếu quên, vui lòng báo Quản lý (Manager) để cấp mã mới.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section-title">📦 2. Thao tác hàng ngày</div>
+    <div class="card">
+        <div class="card-header">
+            <div class="icon-box success" style="color: var(--success);">📷</div>
+            <div class="card-title">Nhập / Xuất Kho Nhanh</div>
+        </div>
+        <div class="card-content">
+            <ul>
+                <li><strong>Quét Mã Vạch:</strong> Bấm icon Camera, soi vào mã vạch trên hộp đồ. Cửa sổ thao tác (Cộng/Trừ) sẽ hiện ra ngay lập tức.</li>
+                <li><strong>Tìm Kiếm:</strong> Gõ tên hàng vào thanh tìm kiếm. Hệ thống nhận diện tiếng Việt không dấu (VD: gõ <span class="badge">gao</span> sẽ ra <strong>Gạo</strong>).</li>
+                <li><strong>Lịch sử:</strong> Xem danh sách mặt hàng vừa thao tác ở phía dưới để chọn lại một cách nhanh chóng.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="icon-box warning" style="color: var(--warning);">🍽</div>
+            <div class="card-title">Yêu cầu Bổ sung - Nhà hàng</div>
+        </div>
+        <div class="card-content">
+            <ul>
+                <li>Dành cho team Bếp, Sushi, Bar lấy hàng từ kho Tổng.</li>
+                <li>Vào khu vực <strong>Auffüllen (Bổ sung)</strong>. Hệ thống tự so sánh mức chuẩn (Soll-Bestand) để tính ra số đồ đang thiếu.</li>
+                <li>Nếu nút báo <strong>Leer (Hết)</strong> hoặc <strong>Nachfüllen (Cần thêm)</strong>, chỉ cần bấm nút <strong>"Tạo yêu cầu"</strong>.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section-title">✨ 3. Mẹo linh hoạt & Lưu ý</div>
+    <div class="card">
+        <div class="card-header">
+            <div class="icon-box" style="color: var(--text-main); background: #374151;">🆕</div>
+            <div class="card-title">Gặp Sản Phẩm Mới</div>
+        </div>
+        <div class="card-content">
+            <ul>
+                <li>Quét mã vạch chưa có trên app ➔ Bấm <strong>Tạo Mới</strong>.</li>
+                <li>Sản phẩm nhân viên tự tạo sẽ nằm ở danh sách <span class="badge pending">Pending (Chờ duyệt)</span>. Đừng hoảng hốt nếu không xuất/nhập được ngay, hãy nhờ Quản lý duyệt hệ thống.</li>
+                <li>Nếu quét bị lỗi <strong>"Trùng mã vạch"</strong> nghĩa là món đó đã nằm sẵn trong kho Chờ duyệt của ai đó tạo trước rồi.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="icon-box danger" style="color: var(--danger);">📶</div>
+            <div class="card-title">Làm việc Mất Mạng (Offline)</div>
+        </div>
+        <div class="card-content">
+            <ul>
+                <li>Xuống kho ngầm, mất 4G/Wifi? Bảng cảnh báo <span class="badge offline">⚠ Offline</span> sẽ hiện ra ở góc.</li>
+                <li><strong>Bạn cứ quét bình thường!</strong> Mọi thao tác xuất/nhập/tìm kiếm đều dùng được.</li>
+                <li>Ứng dụng tự ghi nhớ vào điện thoại. Chỉ cần ra vị trí có vùng phủ sóng tốt, chữ Offline tắt đi, mọi dữ liệu tự động đồng bộ siêu tốc lên đám mây. Không mất bất kỳ thao tác nào!</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="alert-box">
+        <div class="alert-title">❌ Lỗi "Không thấy chức năng"</div>
+        <div>
+            Giao diện của bạn đã được thiết kế tối giản lại dành đúng cho vai trò Staff. Việc ẩn Cài đặt nhà cung cấp, Quyền dữ liệu... giúp màn hình cực kỳ sạch gọn, không sợ bấm nhầm.
+        </div>
+    </div>
+
+    <a href="#" class="btn-scroll-top" title="Lên đầu trang">↑</a>
+
+</body>
+</html>
