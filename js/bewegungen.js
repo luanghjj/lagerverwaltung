@@ -69,10 +69,10 @@ function bewSearch(typ) {
     const raw = $("#bew_search")?.value?.trim() || "";
     const isBarcode = /^\d{8,}$/.test(raw);
     let nh = `<div class="live-results" style="padding:12px;text-align:center;color:var(--t3)">`;
-    if (isBarcode && can(U.role,"artikel")) {
-      nh += `<div style="margin-bottom:6px">${LANG==="vi"?"Không tìm thấy SP với mã":"Kein Artikel mit Barcode"} <b>${esc(raw)}</b></div>`;
-      nh += `<button class="btn btn-p btn-sm" onclick="editArtikelWithBarcode('${esc(raw)}')">${LANG==="vi"?"+ Tạo sản phẩm mới":"+ Neuen Artikel anlegen"}</button>`;
-    } else { nh += `—`; }
+    // Show create button for all accounts — staff creates as "pending", admin/manager direct
+    nh += `<div style="margin-bottom:6px">${LANG==="vi"?"Không tìm thấy SP với mã":"Kein Artikel mit Barcode"} <b>${esc(raw)}</b></div>`;
+    nh += `<button class="btn btn-p btn-sm" onclick="editArtikelWithBarcode('${esc(raw)}')">${LANG==="vi"?"+ Tạo sản phẩm mới":"+ Neuen Artikel anlegen"}</button>`;
+
     nh += `</div>`;
     $("#bew_results").innerHTML = nh; return;
   }
@@ -95,9 +95,8 @@ function bewSearchKey(e, typ) {
     if (a) addToBatch(a.id, typ);
     else {
       const raw = $("#bew_search")?.value?.trim() || "";
-      if (/^\d{8,}$/.test(raw) && can(U.role,"artikel")) {
-        cConfirm(LANG==="vi"?`Mã ${raw} chưa có SP. Tạo mới?`:`Barcode ${raw} nicht gefunden. Neuen Artikel anlegen?`, () => editArtikelWithBarcode(raw));
-      }
+      // All accounts can create — staff creates as pending
+      cConfirm(LANG==="vi"?`Mã ${raw} chưa có SP. Tạo mới?`:`Barcode ${raw} nicht gefunden. Neuen Artikel anlegen?`, () => editArtikelWithBarcode(raw));
     }
   } else if (e.key === "Escape") {
     $("#bew_search").value = "";

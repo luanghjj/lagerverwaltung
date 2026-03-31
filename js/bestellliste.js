@@ -8,16 +8,10 @@ function renderBestellliste(vS, aS) {
   // ── Bereiche-Filter: live aus D.users (realtime-aktuell, nicht gecachtes U) ──
   const _liveUser = D.users.find(x => x.id === U.id) || U;
   const userBr = _liveUser.bereiche || ["all"];
-  console.log("[BL-Filter] bereiche:", JSON.stringify(userBr), "| sids:", JSON.stringify(sids));
-  // Debug each bereiche match
-  D.bereiche.filter(br => userBr.includes(br.id)).forEach(br => {
-    console.log(`[BL-Filter] br="${br.name}" id=${br.id} standortId=${br.standortId} inSids=${sids.includes(br.standortId)} artikelCount=${br.artikel.length}`);
-  });
   const brArtikelIds = userBr.includes("all") ? null : new Set(
     D.bereiche.filter(br => userBr.includes(br.id) && sids.includes(br.standortId))
               .flatMap(br => br.artikel.map(ba => ba.artikelId))
   );
-  console.log("[BL-Filter] brArtikelIds:", brArtikelIds ? [...brArtikelIds].slice(0,5) + ` (${brArtikelIds.size} total)` : "null=all");
   const canSeeArtikelBL = (artikelId) => !brArtikelIds || brArtikelIds.has(artikelId);
   D.artikel.forEach(a => {
     if (!canSeeArtikelBL(a.id)) return; // skip artikel outside user's bereiche
