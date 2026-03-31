@@ -5,8 +5,9 @@ function renderBestellliste(vS, aS) {
 
   // Auto-add articles below Mindestmenge
   const sids = aS ? [aS] : vS.map(s=>s.id);
-  // ── Bereiche-Filter: nur Artikel aus zugewiesenen Bereichen ──
-  const userBr = U.bereiche || ["all"];
+  // ── Bereiche-Filter: live aus D.users (realtime-aktuell, nicht gecachtes U) ──
+  const _liveUser = D.users.find(x => x.id === U.id) || U;
+  const userBr = _liveUser.bereiche || ["all"];
   const brArtikelIds = userBr.includes("all") ? null : new Set(
     D.bereiche.filter(br => userBr.includes(br.id) && sids.includes(br.standortId))
               .flatMap(br => br.artikel.map(ba => ba.artikelId))
@@ -633,7 +634,7 @@ function addCriticalToBestellliste() {
   const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s=>U.standorte.includes(s.id));
   const sids = STF !== "all" ? [STF] : vS.map(s=>s.id);
   // Filter by user's bereiche
-  const userBr = U.bereiche || ["all"];
+  const userBr = (D.users.find(x => x.id === U.id) || U).bereiche || ["all"];
   const brArtikelIds = userBr.includes("all") ? null : new Set(
     D.bereiche.filter(br => userBr.includes(br.id) && sids.includes(br.standortId))
               .flatMap(br => br.artikel.map(ba => ba.artikelId))
@@ -673,7 +674,7 @@ function blQuickLiefChanged() {
   const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s=>U.standorte.includes(s.id));
   const stId = STF !== "all" ? STF : vS[0]?.id || "";
   // Bereiche filter
-  const userBr = U.bereiche || ["all"];
+  const userBr = (D.users.find(x => x.id === U.id) || U).bereiche || ["all"];
   const brArtikelIds = userBr.includes("all") ? null : new Set(
     D.bereiche.filter(br => userBr.includes(br.id) && (stId ? br.standortId === stId : vS.some(s=>s.id===br.standortId)))
               .flatMap(br => br.artikel.map(ba => ba.artikelId))
