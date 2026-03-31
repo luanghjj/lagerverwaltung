@@ -5,7 +5,15 @@ function renderBestellliste(vS, aS) {
 
   // Auto-add articles below Mindestmenge
   const sids = aS ? [aS] : vS.map(s=>s.id);
+  // ── Bereiche-Filter: nur Artikel aus zugewiesenen Bereichen ──
+  const userBr = U.bereiche || ["all"];
+  const brArtikelIds = userBr.includes("all") ? null : new Set(
+    D.bereiche.filter(br => userBr.includes(br.id) && sids.includes(br.standortId))
+              .flatMap(br => br.artikel.map(ba => ba.artikelId))
+  );
+  const canSeeArtikelBL = (artikelId) => !brArtikelIds || brArtikelIds.has(artikelId);
   D.artikel.forEach(a => {
+    if (!canSeeArtikelBL(a.id)) return; // skip artikel outside user's bereiche
     sids.forEach(sid => {
       const ist = a.istBestand[sid]||0, min = a.mindestmenge[sid]||0, soll = a.sollBestand[sid]||0;
       if (min > 0 && ist <= min) {
@@ -30,7 +38,7 @@ function renderBestellliste(vS, aS) {
   });
   save();
 
-  const items = D.bestellliste.filter(bl => sids.includes(bl.standortId)).map(bl => {
+  const items = D.bestellliste.filter(bl => sids.includes(bl.standortId) && canSeeArtikelBL(bl.artikelId)).map(bl => {
     const a = D.artikel.find(x=>x.id===bl.artikelId);
     const l = D.lieferanten.find(x=>x.id===bl.lieferantId);
     const s = D.standorte.find(x=>x.id===bl.standortId);
@@ -59,7 +67,7 @@ function renderBestellliste(vS, aS) {
   let h = `<div class="mn-h"><div class="mn-t">${t("nav.orderlist")}</div><div class="mn-a">`;
   h += `<div class="mode-tabs"><span class="mode-tab ${BL_VIEW==="lief"?"on":""}" onclick="BL_VIEW='lief';render()">📦 ${LANG==="vi"?"Theo NCC":"Nach Lieferant"}</span><span class="mode-tab ${BL_VIEW==="art"?"on":""}" onclick="BL_VIEW='art';render()">📋 ${LANG==="vi"?"Theo SP":"Nach Artikel"}</span><span class="mode-tab ${BL_VIEW==="vorlagen"?"on":""}" onclick="BL_VIEW='vorlagen';render()">⭐ ${LANG==="vi"?"Mẫu":"Vorlagen"}</span></div>`;
   // Critical + clear buttons
-  const blCrit = D.artikel.filter(a=>sids.some(sid=>{const ist=a.istBestand[sid]||0,min=a.mindestmenge[sid]||0;return min>0&&ist<=min&&!D.bestellliste.some(bl=>bl.artikelId===a.id&&bl.standortId===sid)&&!D.bestellungen.some(b=>b.artikelId===a.id&&b.standortId===sid&&b.status==="bestellt");}));
+  const blCrit = D.artikel.filter(a=> canSeeArtikelBL(a.id) && sids.some(sid=>{const ist=a.istBestand[sid]||0,min=a.mindestmenge[sid]||0;return min>0&&ist<=min&&!D.bestellliste.some(bl=>bl.artikelId===a.id&&bl.standortId===sid)&&!D.bestellungen.some(b=>b.artikelId===a.id&&b.standortId===sid&&b.status==="bestellt");}));
   if (blCrit.length) h += `<button class="btn btn-d btn-sm" onclick="addCriticalToBestellliste()" style="animation:pulse 1.5s infinite">⚠ ${blCrit.length} ${t("m.addcritical")}</button>`;
   if (items.length) {
     h += `<button class="btn btn-o btn-sm" onclick="clearBestellliste()">✕ ${LANG==="vi"?"Xóa DS":"Leeren"}</button>`;
@@ -624,8 +632,16 @@ function exportOrderExcel(liefKey) {
 function addCriticalToBestellliste() {
   const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s=>U.standorte.includes(s.id));
   const sids = STF !== "all" ? [STF] : vS.map(s=>s.id);
+  // Filter by user's bereiche
+  const userBr = U.bereiche || ["all"];
+  const brArtikelIds = userBr.includes("all") ? null : new Set(
+    D.bereiche.filter(br => userBr.includes(br.id) && sids.includes(br.standortId))
+              .flatMap(br => br.artikel.map(ba => ba.artikelId))
+  );
+  const canSee = (id) => !brArtikelIds || brArtikelIds.has(id);
   let added = 0;
   D.artikel.forEach(a => {
+    if (!canSee(a.id)) return;
     sids.forEach(sid => {
       const ist = a.istBestand[sid]||0, min = a.mindestmenge[sid]||0, soll = a.sollBestand[sid]||0;
       if (min > 0 && ist <= min) {
@@ -654,9 +670,15 @@ function blQuickLiefChanged() {
   if (!liefId || !panel) { if(panel)panel.innerHTML=""; if(info)info.textContent=""; return; }
 
   const l = D.lieferanten.find(x=>x.id===liefId);
-  const arts = D.artikel.filter(a=>a.lieferanten.some(al=>al.lieferantId===liefId));
   const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s=>U.standorte.includes(s.id));
   const stId = STF !== "all" ? STF : vS[0]?.id || "";
+  // Bereiche filter
+  const userBr = U.bereiche || ["all"];
+  const brArtikelIds = userBr.includes("all") ? null : new Set(
+    D.bereiche.filter(br => userBr.includes(br.id) && (stId ? br.standortId === stId : vS.some(s=>s.id===br.standortId)))
+              .flatMap(br => br.artikel.map(ba => ba.artikelId))
+  );
+  const arts = D.artikel.filter(a=>a.lieferanten.some(al=>al.lieferantId===liefId) && (!brArtikelIds || brArtikelIds.has(a.id)));
 
   if (info) info.textContent = `${arts.length} ${LANG==="vi"?"sản phẩm":"Artikel"}`;
 

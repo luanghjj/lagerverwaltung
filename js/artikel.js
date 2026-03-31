@@ -1,24 +1,67 @@
 // ═══ ARTIKEL (Article Management) ═══
 function renderArtikel(vS, aS) {
   const stC = vS.filter(s=>!aS||s.id===aS);
+  const canApprove = U && (U.role === "admin" || U.role === "manager");
+
+  // Status filter (reset to 'all' for non-approvers)
+  const sfil = canApprove ? ART_STATUS_FILTER : "all";
+
+  // Filter articles by status:
+  // - staff: only sees active + own pending/rejected
+  // - admin/manager: all, filtered by sfil
+  const visibleArt = D.artikel.filter(a => {
+    const st = a.status || "active";
+    if (canApprove) {
+      if (sfil === "all") return true;
+      return st === sfil;
+    } else {
+      return st === "active" || a.createdBy === U.id;
+    }
+  });
+
+  const pendingCount = D.artikel.filter(a => (a.status || "active") === "pending").length;
+  const rejectedCount = D.artikel.filter(a => (a.status || "active") === "rejected").length;
+
   let h = `<div class="mn-h"><div class="mn-t">${t("nav.articles")}</div><div class="mn-a">`;
   h += `<div class="mode-tabs"><span class="mode-tab ${ART_VIEW==="art"?"on":""}" onclick="ART_VIEW='art';render()">📋 ${LANG==="vi"?"Theo SP":"Nach Artikel"}</span><span class="mode-tab ${ART_VIEW==="kat"?"on":""}" onclick="ART_VIEW='kat';render()">🏷 ${LANG==="vi"?"Theo DM":"Nach Kategorie"}</span><span class="mode-tab ${ART_VIEW==="lager"?"on":""}" onclick="ART_VIEW='lager';render()">📦 ${LANG==="vi"?"Theo kho":"Nach Lagerort"}</span><span class="mode-tab ${ART_VIEW==="lief"?"on":""}" onclick="ART_VIEW='lief';render()">🚛 ${LANG==="vi"?"Theo NCC":"Nach Lieferant"}</span></div>`;
   if (can(U.role,"export")) h += `<button class="btn btn-o btn-sm" onclick="exportExcel()">⬇ Excel</button><button class="btn btn-o btn-sm" onclick="exportPDF()">⬇ PDF</button>`;
   h += `${can(U.role,"artikel")?`<button class="btn btn-p" onclick="editArtikel()">+ ${t("c.new")}</button>`:""}`;
   h += `</div></div><div class="mn-c">`;
 
+  // Pending/rejected filter tabs (admin/manager only)
+  if (canApprove) {
+    h += `<div class="mode-tabs" style="margin-bottom:10px">`;
+    h += `<span class="mode-tab ${sfil==="all"?"on":""}" onclick="ART_STATUS_FILTER='all';render()">✅ ${LANG==="vi"?"Tất cả":"Alle"} (${D.artikel.length})</span>`;
+    if (pendingCount > 0) h += `<span class="mode-tab ${sfil==="pending"?"on":""}" onclick="ART_STATUS_FILTER='pending';render()" style="${sfil==="pending"?"":"color:var(--yl)"}">🟡 ${t("art.pending")} (${pendingCount})</span>`;
+    if (rejectedCount > 0) h += `<span class="mode-tab ${sfil==="rejected"?"on":""}" onclick="ART_STATUS_FILTER='rejected';render()" style="${sfil==="rejected"?"":"color:var(--rd)"}">🔴 ${t("art.rejected")} (${rejectedCount})</span>`;
+    h += `</div>`;
+  } else if (!canApprove) {
+    // Staff: show their own pending/rejected as info
+    const myPending = D.artikel.filter(a => (a.status || "active") !== "active" && a.createdBy === U.id);
+    if (myPending.length > 0) {
+      myPending.forEach(a => {
+        const st = a.status || "active";
+        if (st === "pending") {
+          h += `<div style="background:var(--yA);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>🟡</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--yl)">${esc(artN(a))} — ${t("art.pendingapproval")}</div></div></div>`;
+        } else if (st === "rejected") {
+          h += `<div style="background:var(--rA);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span>🔴</span><div style="font-size:12px;font-weight:600;color:var(--rd)">${esc(artN(a))} — ${t("art.rejected")}</div></div>${a.rejectedReason?`<div style="font-size:11px;color:var(--t2);margin-left:24px">${esc(a.rejectedReason)}</div>`:""}<div style="margin-left:24px;margin-top:6px"><button class="btn btn-o btn-sm" onclick="resubmitArtikel('${a.id}')" style="font-size:11px">↩ ${t("art.resubmit")}</button></div></div>`;
+        }
+      });
+    }
+  }
+
   h += `<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"><div class="srch" style="flex:1;min-width:150px;position:relative"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" placeholder="${t("c.search")}" id="artSearch" value="${esc(ART_SEARCH)}" oninput="artSearchInput(this)" style="padding-right:${ART_SEARCH?'28px':'9px'}">${ART_SEARCH?`<button class="bi" onclick="artSearchClear()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3)">✕</button>`:""}</div></div>`;
 
   const q = norm(ART_SEARCH);
-  const fil = D.artikel.filter(a => {
+  const fil = visibleArt.filter(a => {
     if (q && !norm(a.name).includes(q) && !norm(a.name_vi).includes(q) && !norm(a.sku).includes(q) && !(a.barcodes||[]).some(bc=>bc.includes(q))) return false;
     return true;
   });
 
   if (q) {
-    h += `<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${fil.length} ${LANG==="vi"?"kết quả cho":"Ergebnis(se) für"} „${esc(ART_SEARCH)}"${fil.length!==D.artikel.length?` <span style="color:var(--t3)">(${LANG==="vi"?"trong tổng":"von"} ${D.artikel.length})</span>`:""}</div>`;
+    h += `<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${fil.length} ${LANG==="vi"?"kết quả cho":"Ergebnis(se) für"} „${esc(ART_SEARCH)}"${fil.length!==visibleArt.length?` <span style="color:var(--t3)">(${LANG==="vi"?"trong tổng":"von"} ${visibleArt.length})</span>`:""}</div>`;
     if (!fil.length && /^\d{8,}$/.test(ART_SEARCH.trim()) && can(U.role,"artikel")) {
-      h += `<div style="text-align:center;padding:16px"><div style="margin-bottom:8px;color:var(--t3)">${LANG==="vi"?"Mã vạch chưa có sản phẩm":"Barcode nicht gefunden"}: <b>${esc(ART_SEARCH.trim())}</b></div><button class="btn btn-p" onclick="editArtikelWithBarcode('${esc(ART_SEARCH.trim())}')">${LANG==="vi"?"+ Tạo sản phẩm mới":"+ Neuen Artikel anlegen"}</button></div>`;
+      h += `<div style="text-align:center;padding:16px"><div style="margin-bottom:8px;color:var(--t3)">${LANG==="vi"?"Mã vạch chưa có sản phẩm":"Barcode nicht gefunden"}: <b>${esc(ART_SEARCH.trim())}</b></div><button class="btn btn-p" onclick="editArtikelWithBarcode('${esc(ART_SEARCH.trim())}')">${LANG==="vi"?"+Tạo sản phẩm mới":"+Neuen Artikel anlegen"}</button></div>`;
     }
   }
 
@@ -33,18 +76,21 @@ function renderArtikel(vS, aS) {
 
 function renderArtikelTable(fil, stC, aS) {
   const sorted = sortArtikel(fil, stC);
+  const canApprove = U && (U.role === "admin" || U.role === "manager");
   const thS = (col, label) => `<th style="cursor:pointer" onclick="artSort('${col}')"><span style="display:inline-flex;align-items:center;gap:3px">${label} <span class="si" style="${ART_SORT===col?"color:var(--ac);opacity:1":"opacity:.4"};font-size:9px">${sortIc(col)}</span></span></th>`;
 
   let h = `<div class="tw"><table><thead><tr><th style="width:34px"></th>${thS("name",t("c.article"))}<th class="mob-hide">${t("c.categories")}</th><th class="mob-hide">${t("c.storageloc")}</th>`;
   stC.forEach(s => { h += `${thS("stock",esc(s.name))}`; });
-  h += `<th class="mob-hide">${t("a.packunit")}</th>${canP()?thS("ek",t("a.bestprice")):""}${can(U.role,"artikel")?`<th></th>`:""}</tr></thead><tbody>`;
+  h += `<th class="mob-hide">${t("a.packunit")}</th>${canP()?thS("ek",t("a.bestprice")):""}<th></th></tr></thead><tbody>`;
 
   sorted.forEach(a => {
     const bp = a.lieferanten.length ? Math.min(...a.lieferanten.map(l=>l.preis)) : null;
     const locStr = aS ? (a.lagerort?.[aS]||"—") : stC.map(s=>a.lagerort?.[s.id]).filter(Boolean).join(" | ") || "—";
-    h += `<tr class="art-row" onclick="showArtikelDetail('${a.id}')">`;
+    const artStatus = a.status || "active";
+    const statusBadge = artStatus === "pending" ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">🟡 ${t("art.pending")}</span>` : artStatus === "rejected" ? `<span style="font-size:9px;padding:1px 5px;background:var(--rA);color:var(--rd);border-radius:3px;font-weight:700;margin-left:4px">🔴 ${t("art.rejected")}</span>` : "";
+    h += `<tr class="art-row" onclick="showArtikelDetail('${a.id}')" style="${artStatus==='pending'?'opacity:.85':artStatus==='rejected'?'opacity:.7':''}">`;
     h += `<td><div class="th">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div></td>`;
-    h += `<td><div style="font-weight:600">${esc(artN(a))}</div>`;
+    h += `<td><div style="font-weight:600">${esc(artN(a))}${statusBadge}</div>`;
     if (LANG === "de" && a.name_vi) h += `<div style="font-size:10px;color:var(--t3)">${esc(a.name_vi)}</div>`;
     if (LANG === "vi") h += `<div style="font-size:10px;color:var(--t3)">${esc(a.name)}</div>`;
     h += `<div style="font-size:9.5px;color:var(--t3);font-family:var(--m)">${esc(a.sku)}</div></td>`;
@@ -57,7 +103,14 @@ function renderArtikelTable(fil, stC, aS) {
     });
     h += `<td class="mob-hide" style="font-size:10.5px;color:var(--t2)">${a.packSize>1?`${a.packSize} ${esc(a.einheit)}/${esc(a.packUnit||"Geb.")}`:"—"}</td>`;
     if (canP()) h += `<td style="font-family:var(--m);font-weight:600">${bp!==null?bp.toFixed(2)+"€":"—"}</td>`;
-    if (can(U.role,"artikel")) h += `<td onclick="event.stopPropagation()"><button class="bi" onclick="editArtikel('${a.id}')">✎</button> <button class="bi dn" onclick="delArtikel('${a.id}')">🗑</button></td>`;
+    // Action buttons
+    let actionH = "";
+    if (artStatus === "pending" && canApprove) {
+      actionH = `<button class="btn btn-sm" style="background:var(--gA);color:var(--gn);border:1px solid rgba(16,185,129,.3);padding:3px 8px;font-size:11px" onclick="event.stopPropagation();approveArtikel('${a.id}')">✓ ${t("art.approve")}</button> <button class="btn btn-sm btn-o" style="font-size:11px" onclick="event.stopPropagation();rejectArtikel('${a.id}')">✕ ${t("art.reject")}</button>`;
+    } else if (can(U.role,"artikel")) {
+      actionH = `<button class="bi" onclick="event.stopPropagation();editArtikel('${a.id}')">✎</button> <button class="bi dn" onclick="delArtikel('${a.id}')">🗑</button>`;
+    }
+    h += `<td onclick="event.stopPropagation()">${actionH}</td>`;
     h += `</tr>`;
   });
   if (!sorted.length) h += `<tr><td colspan="99" style="text-align:center;color:var(--t3);padding:18px">—</td></tr>`;

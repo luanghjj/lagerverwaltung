@@ -8,11 +8,13 @@ function render() {
   const fS = aS ? vS.filter(s=>s.id===aS) : vS; // filtered standorte for critCount
   const cartCount = D.bestellliste.length;
   const critCount = D.artikel.filter(a=>fS.some(s=>{const ist=a.istBestand[s.id]||0,min=a.mindestmenge[s.id]||0;return min>0&&ist<=min;})).length;
+  const canApprove = U && (U.role === "admin" || U.role === "manager");
+  const pendingCount = canApprove ? D.artikel.filter(a => (a.status || "active") === "pending").length : 0;
 
   const NAV = [
     {id:"dashboard",l:t("nav.dashboard"),s:"main",pm:"dashboard",svg:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'},
     {id:"auswertung",l:LANG==="vi"?"Phân tích":"Auswertung",s:"main",pm:"auswertung",svg:'<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/>'},
-    {id:"artikel",l:t("nav.articles"),s:"lager",bdg:critCount||null,bdgColor:"var(--rd)",svg:'<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/>'},
+    {id:"artikel",l:t("nav.articles"),s:"lager",bdg:critCount||null,bdgColor:"var(--rd)",bdg2:pendingCount||null,bdg2Color:"var(--yl)",svg:'<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/>'},
     {id:"eingang",l:t("nav.goodsin"),s:"lager",pm:"eingang",svg:'<path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>'},
     {id:"ausgang",l:t("nav.goodsout"),s:"lager",pm:"ausgang",svg:'<path d="M12 21V9m0 0l4 4m-4-4l-4 4M5 3h14"/>'},
     {id:"transfer",l:LANG==="vi"?"Chuyển kho":"Umbuchen",s:"lager",pm:"transfer",svg:'<path d="M4 12h16m0 0l-4-4m4 4l-4 4M20 12H4m0 0l4 4m-4-4l4-4"/>'},
@@ -40,7 +42,7 @@ function render() {
     if (!items.length) continue;
     sidebar += `<div class="sb-s">${secs[sec]}</div>`;
     for (const n of items) {
-      sidebar += `<div class="sb-i ${PAGE===n.id?"on":""}" onclick="goPage('${n.id}')">${ic(n.svg)}<span>${n.l}</span>${n.bdg?`<span class="bg" ${n.bdgColor?`style="background:${n.bdgColor}"`:""}">${n.bdg}</span>`:""}</div>`;
+      sidebar += `<div class="sb-i ${PAGE===n.id?"on":""}" onclick="goPage('${n.id}')"><span style="flex:1">${ic(n.svg)}<span>${n.l}</span></span>${n.bdg?`<span class="bg" ${n.bdgColor?`style="background:${n.bdgColor}"`:""}>${n.bdg}</span>`:""} ${n.bdg2?`<span class="bg" style="background:${n.bdg2Color||'var(--yl)'};color:#000">${n.bdg2}</span>`:""}</div>`;
     }
   }
   sidebar += `</div><div class="sb-u"><div class="sb-av" style="background:${ROLES[U.role].color}">${U.name[0]}</div><div style="flex:1;min-width:0"><div class="sb-un">${esc(U.name)}</div><div class="sb-ur">${t("r."+U.role)}</div></div><div class="sb-lo" onclick="logout()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></div></div>${typeof APP_ONLINE!=="undefined"&&!APP_ONLINE?`<div style="padding:3px 12px;text-align:center;background:var(--yA);border-top:1px solid var(--bd)"><span style="font-size:10px;font-weight:700;color:var(--yl)">⚠ ${LANG==="vi"?"Ngoại tuyến":"Offline"}</span><span style="font-size:9px;color:var(--t3);margin-left:4px">${LANG==="vi"?"Dữ liệu cục bộ":"Lokale Daten"}</span></div>`:""}<div style="padding:2px 12px 6px;text-align:center;font-size:9px;color:var(--t3);font-family:var(--m);opacity:.5;display:flex;align-items:center;justify-content:center;gap:4px"><span id="rtBadge" style="width:6px;height:6px;border-radius:50%;background:${APP_ONLINE?"var(--gn)":"var(--rd)"};display:inline-block" title="${APP_ONLINE?(LANG==="vi"?"Đồng bộ trực tiếp":"Live-Sync"):(LANG==="vi"?"Ngoại tuyến":"Offline")}"></span>${APP_VERSION}</div></div>`;

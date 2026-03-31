@@ -287,6 +287,7 @@ let ART_VIEW = "art"; // "art" | "lief" | "kat"
 let ART_SEARCH = "";
 let ART_SORT = "name"; // "name" | "sku" | "ek" | "stock" | "kat"
 let ART_SORT_DIR = "asc";
+let ART_STATUS_FILTER = "all"; // "all" | "pending" | "rejected"
 function artSearchInput(el) { if(_IME)return; ART_SEARCH = el.value; render(); }
 function artSearchClear() { ART_SEARCH = ""; render(); }
 function artSort(col) { if (ART_SORT === col) ART_SORT_DIR = ART_SORT_DIR === "asc" ? "desc" : "asc"; else { ART_SORT = col; ART_SORT_DIR = "asc"; } render(); }

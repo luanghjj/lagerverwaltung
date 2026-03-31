@@ -124,7 +124,10 @@ async function sbLoadAll() {
         bilder: a.bilder || [], lagerort, istBestand, sollBestand, mindestmenge,
         einheit: a.einheit || "Stk.", packUnit: a.pack_unit || "", packSize: a.pack_size || 0,
         lieferanten: liefByArt[a.id] || [],
-        beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || ""
+        beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "",
+        status: a.status || "active",
+        createdBy: a.created_by || "",
+        rejectedReason: a.rejected_reason || ""
       };
     });
 
@@ -275,12 +278,23 @@ async function sbDelete(table, id) {
 
 // Save artikel + bestand + kategorien + lieferanten
 async function sbSaveArtikel(a) {
-  // 1. Upsert artikel
-  await sb.from("artikel").upsert({
+  // 1. Upsert artikel (status/created_by/rejected_reason added gracefully)
+  const artData = {
     id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "",
     barcodes: a.barcodes || [], bilder: a.bilder || [],
     beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "",
-    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0
+    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0,
+    status: a.status || "active",
+    created_by: a.createdBy || null,
+    rejected_reason: a.rejectedReason || null
+  };
+  await sb.from("artikel").upsert(artData).catch(e => {
+    // Fallback: if status columns don't exist yet, retry without them
+    if (e.message?.includes("status") || e.message?.includes("created_by") || e.message?.includes("rejected_reason")) {
+      const fallback = { id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "", barcodes: a.barcodes || [], bilder: a.bilder || "", beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "", einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0 };
+      return sb.from("artikel").upsert(fallback);
+    }
+    throw e;
   });
   // 2. Upsert bestand per standort
   for (const [sid, ist] of Object.entries(a.istBestand || {})) {
@@ -305,6 +319,27 @@ async function sbSaveArtikel(a) {
       a.lieferanten.map(l => ({ artikel_id: a.id, lieferant_id: l.lieferantId, preis: l.preis || 0, art_nr: l.artNr || "" }))
     );
   }
+}
+
+// Approve artikel (admin/manager only)
+async function sbApproveArtikel(id) {
+  const { error } = await sb.from("artikel").update({ status: "active", rejected_reason: null }).eq("id", id);
+  if (error) console.error("[sbApproveArtikel]", error.message);
+  return !error;
+}
+
+// Reject artikel with reason (admin/manager only)
+async function sbRejectArtikel(id, reason) {
+  const { error } = await sb.from("artikel").update({ status: "rejected", rejected_reason: reason || "" }).eq("id", id);
+  if (error) console.error("[sbRejectArtikel]", error.message);
+  return !error;
+}
+
+// Resubmit rejected artikel (staff)
+async function sbResubmitArtikel(id) {
+  const { error } = await sb.from("artikel").update({ status: "pending", rejected_reason: null }).eq("id", id);
+  if (error) console.error("[sbResubmitArtikel]", error.message);
+  return !error;
 }
 
 // Save bewegung
