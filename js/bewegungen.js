@@ -95,8 +95,8 @@ function bewSearchKey(e, typ) {
     if (a) addToBatch(a.id, typ);
     else {
       const raw = $("#bew_search")?.value?.trim() || "";
-      // All accounts can create — staff creates as pending
-      cConfirm(LANG==="vi"?`Mã ${raw} chưa có SP. Tạo mới?`:`Barcode ${raw} nicht gefunden. Neuen Artikel anlegen?`, () => editArtikelWithBarcode(raw));
+      // All roles can create — only for barcode-style input (8+ digits)
+      if (/^\d{8,}$/.test(raw)) cConfirm(LANG==="vi"?`Mã ${raw} chưa có SP. Tạo mới?`:`Barcode ${raw} nicht gefunden. Neuen Artikel anlegen?`, () => editArtikelWithBarcode(raw));
     }
   } else if (e.key === "Escape") {
     $("#bew_search").value = "";
