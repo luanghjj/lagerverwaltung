@@ -1045,11 +1045,101 @@ body.lang-vi .section-title [data-lang="vi"]{display:inline !important}
 
 
 <!-- ============================================================ -->
-<!-- SECTION 8: ZUSAMMENFASSUNG -->
+<!-- SECTION 8: UMBUCHEN -->
 <!-- ============================================================ -->
 <div class="guide-section">
   <div class="section-title">
     <span class="section-num">8</span>
+    <span data-lang="de">Umbuchen — Warentransfer</span>
+    <span data-lang="vi">Umbuchen — Chuyển kho</span>
+  </div>
+  <div class="guide-layout">
+    <div class="guide-left">
+      <div class="desc-box arrow-right" data-lang="de">
+        <h3><span class="icon" style="background:#2563eb">1</span> TRANSFER ERSTELLEN</h3>
+        <ul>
+          <li><strong>Hinweis</strong> <span class="hint">(Ware wird sofort am Quell-Standort abgebucht)</span></li>
+          <li><strong>Ziel-Standort</strong> <span class="hint">(muss Empfang bestätigen)</span></li>
+        </ul>
+      </div>
+      <div class="desc-box arrow-right" data-lang="de">
+        <h3><span class="icon" style="background:#22c55e">2</span> STANDORT-AUSWAHL</h3>
+        <ul>
+          <li><strong>Von Standort</strong> <span class="hint">(Quell-Lager wählen)</span></li>
+          <li><strong>Nach Standort</strong> <span class="hint">(Ziel-Lager wählen)</span></li>
+          <li><span class="hint">z.B. Saiya → Origami</span></li>
+        </ul>
+      </div>
+      <div class="desc-box arrow-right" data-lang="vi">
+        <h3><span class="icon" style="background:#2563eb">1</span> TẠO CHUYỂN KHO</h3>
+        <ul>
+          <li><strong>Lưu ý</strong> <span class="hint">(Hàng bị trừ ngay tại kho nguồn)</span></li>
+          <li><strong>Kho đích</strong> <span class="hint">(phải xác nhận nhận hàng)</span></li>
+        </ul>
+      </div>
+      <div class="desc-box arrow-right" data-lang="vi">
+        <h3><span class="icon" style="background:#22c55e">2</span> CHỌN KHO</h3>
+        <ul>
+          <li><strong>Von Standort</strong> <span class="hint">(Chọn kho nguồn)</span></li>
+          <li><strong>Nach Standort</strong> <span class="hint">(Chọn kho đích)</span></li>
+          <li><span class="hint">VD: Saiya → Origami</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="guide-center">
+      <img src="guide/umbuchen.png" alt="Umbuchen">
+      <div class="hzone hzone-blue" style="top:9%;left:13%;width:87%;height:10%"><span class="hzone-num">1</span></div>
+      <div class="hzone hzone-green" style="top:20%;left:13%;width:87%;height:10%"><span class="hzone-num">2</span></div>
+      <div class="hzone hzone-purple" style="top:31%;left:13%;width:87%;height:5%"><span class="hzone-num">3</span></div>
+      <div class="hzone hzone-amber" style="top:37%;left:13%;width:87%;height:5%"><span class="hzone-num">4</span></div>
+    </div>
+    <div class="guide-right">
+      <div class="desc-box arrow-left" data-lang="de">
+        <h3><span class="icon" style="background:#8b5cf6">3</span> ARTIKEL SUCHEN</h3>
+        <ul>
+          <li><strong>🔍 Suche...</strong> <span class="hint">(Produktname eingeben)</span></li>
+          <li><strong>Barcode scannen</strong> <span class="hint">(Bluetooth-Scanner)</span></li>
+          <li><span class="hint">Produkt auswählen → Menge eingeben → Transferieren</span></li>
+        </ul>
+      </div>
+      <div class="desc-box arrow-left" data-lang="de">
+        <h3><span class="icon" style="background:#f59e0b">4</span> HISTORIE</h3>
+        <ul>
+          <li><strong>Vergangene Transfers</strong> <span class="hint">(Chronologisch sortiert)</span></li>
+          <li><strong>Status</strong> <span class="hint">(Ausstehend / Empfangen)</span></li>
+          <li><strong>Details</strong> <span class="hint">(Artikel, Menge, Datum)</span></li>
+        </ul>
+      </div>
+      <div class="desc-box arrow-left" data-lang="vi">
+        <h3><span class="icon" style="background:#8b5cf6">3</span> TÌM SẢN PHẨM</h3>
+        <ul>
+          <li><strong>🔍 Suche...</strong> <span class="hint">(Nhập tên SP)</span></li>
+          <li><strong>Quét barcode</strong> <span class="hint">(Máy quét Bluetooth)</span></li>
+          <li><span class="hint">Chọn SP → Nhập SL → Chuyển</span></li>
+        </ul>
+      </div>
+      <div class="desc-box arrow-left" data-lang="vi">
+        <h3><span class="icon" style="background:#f59e0b">4</span> LỊCH SỬ</h3>
+        <ul>
+          <li><strong>Các lần chuyển trước</strong> <span class="hint">(Theo thời gian)</span></li>
+          <li><strong>Trạng thái</strong> <span class="hint">(Chờ / Đã nhận)</span></li>
+          <li><strong>Chi tiết</strong> <span class="hint">(SP, SL, Ngày)</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="detail-section">
+    <div data-lang="de"><div class="warn-box"><strong>⚠️ Wichtig:</strong> Ware wird <strong>sofort</strong> am Quell-Standort abgebucht. Der Ziel-Standort muss den Empfang bestätigen, bevor die Ware dort im Bestand erscheint.</div></div>
+    <div data-lang="vi"><div class="warn-box"><strong>⚠️ Lưu ý:</strong> Hàng bị <strong>trừ ngay</strong> tại kho nguồn. Kho đích phải xác nhận nhận hàng trước khi tồn kho được cập nhật.</div></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 9: ZUSAMMENFASSUNG -->
+<!-- ============================================================ -->
+<div class="guide-section">
+  <div class="section-title">
+    <span class="section-num">9</span>
     <span data-lang="de">Zusammenfassung — Berechtigungen</span>
     <span data-lang="vi">Tổng hợp — Quyền hạn</span>
   </div>
@@ -1059,6 +1149,7 @@ body.lang-vi .section-title [data-lang="vi"]{display:inline !important}
         <tr><th>Aktion</th><th>Verarbeitung</th><th>Admin nötig?</th></tr>
         <tr><td><span class="badge badge-green">↓ Wareneingang</span></td><td>Sofort ✅</td><td>Nein</td></tr>
         <tr><td><span class="badge badge-red">↑ Warenausgang</span></td><td>Sofort ✅</td><td>Nein</td></tr>
+        <tr><td><span class="badge badge-blue">⇄ Umbuchen</span></td><td>Sofort ✅</td><td>Nein</td></tr>
         <tr><td><span class="badge badge-blue">🛒 Bestellung</span></td><td>Sofort ✅</td><td>Nein</td></tr>
         <tr><td><span class="badge badge-purple">🔄 Auffüllung (1/2)</span></td><td>Anforderung ⏳</td><td>Nein</td></tr>
         <tr><td><span class="badge badge-green">✓ Auffüllung (2/2)</span></td><td>Abbuchen ✅</td><td>Nein</td></tr>
@@ -1074,6 +1165,7 @@ body.lang-vi .section-title [data-lang="vi"]{display:inline !important}
         <tr><th>Thao tác</th><th>Xử lý</th><th>Cần Admin?</th></tr>
         <tr><td><span class="badge badge-green">↓ Nhập kho</span></td><td>Ngay lập tức ✅</td><td>Không</td></tr>
         <tr><td><span class="badge badge-red">↑ Xuất kho</span></td><td>Ngay lập tức ✅</td><td>Không</td></tr>
+        <tr><td><span class="badge badge-blue">⇄ Chuyển kho</span></td><td>Ngay lập tức ✅</td><td>Không</td></tr>
         <tr><td><span class="badge badge-blue">🛒 Đặt hàng</span></td><td>Ngay lập tức ✅</td><td>Không</td></tr>
         <tr><td><span class="badge badge-purple">🔄 Bổ sung (1/2)</span></td><td>Tạo yêu cầu ⏳</td><td>Không</td></tr>
         <tr><td><span class="badge badge-green">✓ Bổ sung (2/2)</span></td><td>Trừ kho ✅</td><td>Không</td></tr>
@@ -1384,9 +1476,84 @@ body.lang-vi .section-title [data-lang="vi"]{display:inline !important}
   </div>
 </div>
 
-<!-- M7: ZUSAMMENFASSUNG -->
+<!-- M7: UMBUCHEN -->
 <div class="m-section">
-  <div class="section-title"><span class="section-num">7</span><span data-lang="de">Zusammenfassung</span><span data-lang="vi">Tổng hợp</span></div>
+  <div class="section-title"><span class="section-num">7</span><span data-lang="de">Umbuchen — Warentransfer</span><span data-lang="vi">Umbuchen — Chuyển kho</span></div>
+  <div class="m-body">
+    <div class="m-grid">
+      <div class="m-phone" style="position:relative"><img src="guide/m_umbuchen.png" alt="Umbuchen Mobile">
+        <div class="hzone hzone-blue" style="top:10%;left:3%;width:94%;height:14%"><span class="hzone-num">1</span></div>
+        <div class="hzone hzone-green" style="top:26%;left:3%;width:94%;height:24%"><span class="hzone-num">2</span></div>
+        <div class="hzone hzone-purple" style="top:52%;left:3%;width:94%;height:10%"><span class="hzone-num">3</span></div>
+        <div class="hzone hzone-amber" style="top:64%;left:3%;width:94%;height:5%"><span class="hzone-num">4</span></div>
+      </div>
+      <div>
+        <div class="m-card" data-lang="de">
+          <h4><span class="icon" style="background:#2563eb">1</span> Transfer erstellen</h4>
+          <ul>
+            <li><strong>Hinweis</strong> <span class="hint">(Ware sofort am Quell-Standort abgebucht)</span></li>
+            <li><strong>Ziel-Standort</strong> muss Empfang bestätigen</li>
+          </ul>
+        </div>
+        <div class="m-card" data-lang="de">
+          <h4><span class="icon" style="background:#22c55e">2</span> Standort-Auswahl</h4>
+          <ul>
+            <li><strong>Von Standort</strong> <span class="hint">(z.B. Saiya)</span></li>
+            <li><strong>Nach Standort</strong> <span class="hint">(z.B. Origami)</span></li>
+          </ul>
+        </div>
+        <div class="m-card" data-lang="de">
+          <h4><span class="icon" style="background:#8b5cf6">3</span> Artikel suchen</h4>
+          <ul>
+            <li><strong>🔍 Suche...</strong> <span class="hint">(Produkt suchen/scannen)</span></li>
+            <li>Auswählen → Menge → Transferieren</li>
+          </ul>
+        </div>
+        <div class="m-card" data-lang="de">
+          <h4><span class="icon" style="background:#f59e0b">4</span> Historie</h4>
+          <ul>
+            <li><strong>Vergangene Transfers</strong></li>
+            <li>Status: Ausstehend / Empfangen</li>
+          </ul>
+        </div>
+        <div class="m-card" data-lang="vi">
+          <h4><span class="icon" style="background:#2563eb">1</span> Tạo chuyển kho</h4>
+          <ul>
+            <li><strong>Lưu ý</strong> <span class="hint">(Hàng bị trừ ngay tại kho nguồn)</span></li>
+            <li><strong>Kho đích</strong> phải xác nhận nhận hàng</li>
+          </ul>
+        </div>
+        <div class="m-card" data-lang="vi">
+          <h4><span class="icon" style="background:#22c55e">2</span> Chọn kho</h4>
+          <ul>
+            <li><strong>Von Standort</strong> <span class="hint">(VD: Saiya)</span></li>
+            <li><strong>Nach Standort</strong> <span class="hint">(VD: Origami)</span></li>
+          </ul>
+        </div>
+        <div class="m-card" data-lang="vi">
+          <h4><span class="icon" style="background:#8b5cf6">3</span> Tìm sản phẩm</h4>
+          <ul>
+            <li><strong>🔍 Suche...</strong> <span class="hint">(Tìm/quét SP)</span></li>
+            <li>Chọn → Nhập SL → Chuyển</li>
+          </ul>
+        </div>
+        <div class="m-card" data-lang="vi">
+          <h4><span class="icon" style="background:#f59e0b">4</span> Lịch sử</h4>
+          <ul>
+            <li><strong>Các lần chuyển trước</strong></li>
+            <li>Trạng thái: Chờ / Đã nhận</li>
+          </ul>
+        </div>
+        <div class="m-warn" data-lang="de"><strong>⚠️ Wichtig:</strong> Ware wird sofort am Quell-Standort abgebucht!</div>
+        <div class="m-warn" data-lang="vi"><strong>⚠️ Lưu ý:</strong> Hàng bị trừ ngay tại kho nguồn!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- M8: ZUSAMMENFASSUNG -->
+<div class="m-section">
+  <div class="section-title"><span class="section-num">8</span><span data-lang="de">Zusammenfassung</span><span data-lang="vi">Tổng hợp</span></div>
   <div class="m-body">
     <div class="m-table" data-lang="de">
       <table>
