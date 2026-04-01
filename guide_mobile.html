@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lagerverwaltung v2.0 &#8212; Handy-Anleitung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,#eef2ff 0%,#e0e7ff 50%,#c7d2fe 100%);min-height:100vh;color:#1e293b;padding:0 0 80px}
+
+/* Header */
+.header{background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;padding:20px 16px;text-align:center;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(99,102,241,.4)}
+.header h1{font-size:18px;font-weight:800;letter-spacing:-.5px}
+.header p{font-size:11px;opacity:.8;margin-top:2px}
+
+/* Lang switcher */
+.lang-bar{display:flex;gap:8px;justify-content:center;padding:12px 16px;background:rgba(255,255,255,.7);backdrop-filter:blur(10px);position:sticky;top:62px;z-index:99}
+.lang-btn{padding:8px 20px;border-radius:20px;border:2px solid #6366f1;background:#fff;color:#6366f1;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s}
+.lang-btn.active{background:#6366f1;color:#fff}
+
+/* Nav dots */
+.nav-bar{display:flex;gap:6px;justify-content:center;padding:10px;background:rgba(255,255,255,.5);position:sticky;top:108px;z-index:98;flex-wrap:wrap}
+.nav-dot{width:32px;height:32px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .2s}
+.nav-dot:hover,.nav-dot:active{background:#6366f1;color:#fff;transform:scale(1.15)}
+
+/* Sections */
+.section{margin:16px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.section-head{background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.section-head .num{width:36px;height:36px;background:rgba(255,255,255,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0}
+.section-head .title{font-size:15px;font-weight:700;line-height:1.3}
+
+/* Phone mockup */
+.phone-frame{margin:16px auto;max-width:280px;background:#1e1e1e;border-radius:28px;padding:8px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.phone-frame img{width:100%;border-radius:20px;display:block}
+
+/* Description cards */
+.desc-card{margin:0 16px 12px;padding:14px 16px;background:#f8fafc;border-radius:14px;border-left:4px solid #6366f1}
+.desc-card h4{font-size:13px;font-weight:700;color:#4338ca;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.desc-card h4 .icon{width:22px;height:22px;border-radius:50%;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.desc-card ul{list-style:none;padding:0}
+.desc-card li{font-size:12px;padding:3px 0;line-height:1.5}
+.desc-card li strong{color:#1e293b}
+.hint{color:#94a3b8;font-size:11px}
+
+/* Alert boxes */
+.warn-box{margin:0 16px 12px;padding:12px 14px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:0 12px 12px 0;font-size:12px;color:#92400e}
+.tip-box{margin:0 16px 12px;padding:12px 14px;background:#ecfdf5;border-left:4px solid #22c55e;border-radius:0 12px 12px 0;font-size:12px;color:#065f46}
+.danger-box{margin:0 16px 12px;padding:12px 14px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:0 12px 12px 0;font-size:12px;color:#991b1b}
+
+/* Step badges */
+.step{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.step-blue{background:#dbeafe;color:#2563eb}
+.step-green{background:#dcfce7;color:#16a34a}
+.step-red{background:#fecaca;color:#dc2626}
+.step-amber{background:#fef3c7;color:#d97706}
+
+/* Table */
+.info-table{margin:0 16px 12px;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0}
+.info-table table{width:100%;border-collapse:collapse;font-size:12px}
+.info-table th{background:#f1f5f9;padding:8px 12px;text-align:left;font-weight:700;color:#475569}
+.info-table td{padding:8px 12px;border-top:1px solid #e2e8f0}
+
+/* Spacer */
+.spacer{height:12px}
+
+/* Section bottom padding */
+.section-body{padding-bottom:16px}
+
+/* Link to desktop */
+.desktop-link{text-align:center;margin:20px 16px;padding:14px;background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.desktop-link a{color:#6366f1;font-weight:700;font-size:13px;text-decoration:none}
+
+/* Language toggle */
+[data-lang]{display:none}
+.section-head .title[data-lang]{display:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1 data-lang="de">&#x1F4F1; Lagerverwaltung &#8212; Handy-Anleitung</h1>
+  <h1 data-lang="vi">&#x1F4F1; Qu&#7843;n l&#253; kho &#8212; H&#432;&#7899;ng d&#7851;n &#273;i&#7879;n tho&#7841;i</h1>
+  <p>Origami &#183; Enso &#183; Okyu &mdash; v2.0.0</p>
+</div>
+
+<div class="lang-bar">
+  <button class="lang-btn active" onclick="setLang('de')">&#127465;&#127466; DE</button>
+  <button class="lang-btn" onclick="setLang('vi')">&#127483;&#127475; VI</button>
+</div>
+
+<div class="nav-bar">
+  <a class="nav-dot" href="#s1">1</a>
+  <a class="nav-dot" href="#s2">2</a>
+  <a class="nav-dot" href="#s3">3</a>
+  <a class="nav-dot" href="#s4">4</a>
+  <a class="nav-dot" href="#s5">5</a>
+  <a class="nav-dot" href="#s6">6</a>
+  <a class="nav-dot" href="#s7">7</a>
+</div>
+
+<!-- ====== SECTION 1: LOGIN ====== -->
+<div class="section" id="s1">
+  <div class="section-head">
+    <span class="num">1</span>
+    <span class="title" data-lang="de">Anmeldung</span>
+    <span class="title" data-lang="vi">&#272;&#259;ng nh&#7853;p</span>
+  </div>
+  <div class="section-body">
+    <div class="phone-frame"><img src="guide/m_login.png" alt="Login"></div>
+    <div class="desc-card" data-lang="de">
+      <h4><span class="icon" style="background:#2563eb">1</span> So meldest du dich an</h4>
+      <ul>
+        <li>&#x1F310; Seite &#246;ffnen: <strong>lageroriensookyu.vercel.app</strong></li>
+        <li>&#x1F522; <strong>6-stelligen PIN</strong> eingeben</li>
+        <li>&#x1F4F2; Auf <strong>Anmelden</strong> tippen</li>
+        <li>&#127760; Sprache w&#228;hlen: <strong>DE</strong> oder <strong>VI</strong></li>
+        <li>&#x1F319; Dark Mode: Mond-Symbol tippen</li>
+      </ul>
+    </div>
+    <div class="desc-card" data-lang="vi">
+      <h4><span class="icon" style="background:#2563eb">1</span> C&#225;ch &#273;&#259;ng nh&#7853;p</h4>
+      <ul>
+        <li>&#x1F310; M&#7903; trang: <strong>lageroriensookyu.vercel.app</strong></li>
+        <li>&#x1F522; Nh&#7853;p <strong>PIN 6 s&#7889;</strong></li>
+        <li>&#x1F4F2; B&#7845;m <strong>&#272;&#259;ng nh&#7853;p</strong></li>
+        <li>&#127760; Ch&#7885;n ng&#244;n ng&#7919;: <strong>DE</strong> ho&#7863;c <strong>VI</strong></li>
+        <li>&#x1F319; Ch&#7871; &#273;&#7897; t&#7889;i: B&#7845;m bi&#7875;u t&#432;&#7907;ng tr&#259;ng</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 2: DASHBOARD ====== -->
+<div class="section" id="s2">
+  <div class="section-head">
+    <span class="num">2</span>
+    <span class="title" data-lang="de">Dashboard &amp; Men&#252;</span>
+    <span class="title" data-lang="vi">B&#7843;ng &#273;i&#7873;u khi&#7875;n &amp; Menu</span>
+  </div>
+  <div class="section-body">
+    <div class="phone-frame"><img src="guide/m_dashboard.png" alt="Dashboard"></div>
+    <div class="desc-card" data-lang="de">
+      <h4><span class="icon" style="background:#22c55e">&#9776;</span> Navigation auf dem Handy</h4>
+      <ul>
+        <li><strong>&#9776; Hamburger-Men&#252;</strong> <span class="hint">(oben rechts)</span></li>
+        <li>Antippen &rarr; Seitenmen&#252; &#246;ffnet sich</li>
+        <li><strong>Dashboard</strong> zeigt: Gesamt-SP, Bestand, 7-Tage-Chart</li>
+        <li><strong>Standort-Tabs</strong> <span class="hint">(Alle | Saiya | Origami)</span></li>
+        <li><strong>&#x1F6A8; Warnung</strong> <span class="hint">(&#8222;118 SP unter Mindestbestand&#8220;)</span></li>
+      </ul>
+    </div>
+    <div class="desc-card" data-lang="vi">
+      <h4><span class="icon" style="background:#22c55e">&#9776;</span> &#272;i&#7873;u h&#432;&#7899;ng tr&#234;n &#273;i&#7879;n tho&#7841;i</h4>
+      <ul>
+        <li><strong>&#9776; Menu hamburger</strong> <span class="hint">(g&#243;c tr&#234;n ph&#7843;i)</span></li>
+        <li>B&#7845;m &rarr; M&#7903; menu b&#234;n</li>
+        <li><strong>B&#7843;ng &#273;i&#7873;u khi&#7875;n</strong>: T&#7893;ng SP, T&#7891;n kho, Bi&#7875;u &#273;&#7891; 7 ng&#224;y</li>
+        <li><strong>Tab &#273;&#7883;a &#273;i&#7875;m</strong> <span class="hint">(T&#7845;t c&#7843; | Saiya | Origami)</span></li>
+        <li><strong>&#x1F6A8; C&#7843;nh b&#225;o</strong> <span class="hint">(&#8222;118 SP d&#432;&#7899;i m&#7913;c t&#7889;i thi&#7875;u&#8220;)</span></li>
+      </ul>
+    </div>
+    <div class="phone-frame"><img src="guide/m_menu.png" alt="Menu"></div>
+    <div class="desc-card" data-lang="de">
+      <h4><span class="icon" style="background:#8b5cf6">M</span> Men&#252;-&#220;bersicht</h4>
+      <ul>
+        <li><strong>&#x1F4CA; B&#7843;ng &#273;i&#7873;u khi&#7875;n</strong> <span class="hint">(Dashboard)</span></li>
+        <li><strong>&#x1F4E6; S&#7843;n ph&#7849;m</strong> <span class="hint">(Artikel)</span></li>
+        <li><strong>&#x2B07; Nh&#7853;p kho</strong> <span class="hint">(Wareneingang)</span></li>
+        <li><strong>&#x2B06; Xu&#7845;t kho</strong> <span class="hint">(Warenausgang)</span></li>
+        <li><strong>&#x1F4DD; DS &#273;&#7863;t h&#224;ng</strong> <span class="hint">(Bestellliste)</span></li>
+        <li><strong>&#x1F3E0; Khu v&#7921;c</strong> <span class="hint">(Bereiche)</span></li>
+        <li><strong>&#x1F4E5; B&#7893; sung</strong> <span class="hint">(Auff&#252;llung)</span></li>
+      </ul>
+    </div>
+    <div class="desc-card" data-lang="vi">
+      <h4><span class="icon" style="background:#8b5cf6">M</span> T&#7893;ng quan menu</h4>
+      <ul>
+        <li><strong>&#x1F4CA; B&#7843;ng &#273;i&#7873;u khi&#7875;n</strong></li>
+        <li><strong>&#x1F4E6; S&#7843;n ph&#7849;m</strong></li>
+        <li><strong>&#x2B07; Nh&#7853;p kho</strong></li>
+        <li><strong>&#x2B06; Xu&#7845;t kho</strong></li>
+        <li><strong>&#x1F4DD; DS &#273;&#7863;t h&#224;ng</strong></li>
+        <li><strong>&#x1F3E0; Khu v&#7921;c</strong></li>
+        <li><strong>&#x1F4E5; B&#7893; sung</strong></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 3: ARTIKEL ====== -->
+<div class="section" id="s3">
+  <div class="section-head">
+    <span class="num">3</span>
+    <span class="title" data-lang="de">Artikel (Produkte)</span>
+    <span class="title" data-lang="vi">S&#7843;n ph&#7849;m</span>
+  </div>
+  <div class="section-body">
+    <div class="phone-frame"><img src="guide/m_artikel.png" alt="Artikel"></div>
+    <div class="desc-card" data-lang="de">
+      <h4><span class="icon" style="background:#2563eb">&#x1F50D;</span> Produkt-&#220;bersicht</h4>
+      <ul>
+        <li><strong>&#x1F50D; Suche</strong> <span class="hint">(Nach Name oder Barcode)</span></li>
+        <li><strong>&#x1F4F7; Produktfoto</strong> <span class="hint">(Thumbnail)</span></li>
+        <li><strong>Bestandsbalken</strong> <span class="hint">(Gr&#252;n=OK, Rot=Leer)</span></li>
+        <li><strong>Kategorie-Tabs</strong> <span class="hint">(Filtern nach Typ)</span></li>
+        <li><strong>Ist/Soll</strong> <span class="hint">(z.B. 0/6 = 6 fehlen!)</span></li>
+      </ul>
+    </div>
+    <div class="desc-card" data-lang="vi">
+      <h4><span class="icon" style="background:#2563eb">&#x1F50D;</span> T&#7893;ng quan s&#7843;n ph&#7849;m</h4>
+      <ul>
+        <li><strong>&#x1F50D; T&#236;m ki&#7871;m</strong> <span class="hint">(Theo t&#234;n ho&#7863;c barcode)</span></li>
+        <li><strong>&#x1F4F7; &#7842;nh SP</strong> <span class="hint">(H&#236;nh thu nh&#7887;)</span></li>
+        <li><strong>Thanh t&#7891;n kho</strong> <span class="hint">(Xanh=OK, &#272;&#7887;=H&#7871;t)</span></li>
+        <li><strong>Tab danh m&#7909;c</strong> <span class="hint">(L&#7885;c theo lo&#7841;i)</span></li>
+        <li><strong>Hi&#7879;n t&#7841;i/Chu&#7849;n</strong> <span class="hint">(VD: 0/6 = Thi&#7871;u 6!)</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 4: WARENEINGANG ====== -->
+<div class="section" id="s4">
+  <div class="section-head">
+    <span class="num">4</span>
+    <span class="title" data-lang="de">Wareneingang (Nh&#7853;p kho)</span>
+    <span class="title" data-lang="vi">Nh&#7853;p kho</span>
+  </div>
+  <div class="section-body">
+    <div class="phone-frame"><img src="guide/m_wareneingang.png" alt="Wareneingang"></div>
+    <div class="desc-card" data-lang="de">
+      <h4><span class="icon" style="background:#22c55e">+</span> Ware einbuchen</h4>
+      <ul>
+        <li><strong>&#x1F50D; Produkt suchen</strong> oder <strong>Barcode scannen</strong></li>
+        <li><strong>Menge</strong> eingeben <span class="hint">(St&#252;ck/Karton)</span></li>
+        <li><strong>Lieferant</strong> w&#228;hlen <span class="hint">(optional)</span></li>
+        <li>&#x2705; <strong>Einbuchen</strong> tippen &rarr; Bestand erh&#246;ht</li>
+      </ul>
+    </div>
+    <div class="desc-card" data-lang="vi">
+      <h4><span class="icon" style="background:#22c55e">+</span> Nh&#7853;p h&#224;ng</h4>
+      <ul>
+        <li><strong>&#x1F50D; T&#236;m SP</strong> ho&#7863;c <strong>Qu&#233;t barcode</strong></li>
+        <li><strong>S&#7889; l&#432;&#7907;ng</strong> nh&#7853;p <span class="hint">(Chi&#7871;c/Th&#249;ng)</span></li>
+        <li><strong>Nh&#224; cung c&#7845;p</strong> ch&#7885;n <span class="hint">(t&#249;y ch&#7885;n)</span></li>
+        <li>&#x2705; B&#7845;m <strong>Nh&#7853;p kho</strong> &rarr; T&#7891;n kho t&#259;ng</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 5: BEREICHE ====== -->
+<div class="section" id="s5">
+  <div class="section-head">
+    <span class="num">5</span>
+    <span class="title" data-lang="de">Bereiche (Khu v&#7921;c)</span>
+    <span class="title" data-lang="vi">Khu v&#7921;c nh&#224; h&#224;ng</span>
+  </div>
+  <div class="section-body">
+    <div class="phone-frame"><img src="guide/m_bereiche.png" alt="Bereiche"></div>
+    <div class="desc-card" data-lang="de">
+      <h4><span class="icon" style="background:#2563eb">&#x1F37A;</span> Restaurant-Bereiche</h4>
+      <ul>
+        <li><strong>Bar / Getr&#228;nke</strong> <span class="hint">(43 Artikel)</span></li>
+        <li><strong>Service / Phục vụ</strong> <span class="hint">(24 Artikel)</span></li>
+        <li>Jede Karte zeigt <strong>Ist/Soll</strong> pro Artikel</li>
+        <li>&#x1F7E2; <strong>Gr&#252;n</strong> = Voll &nbsp;|&nbsp; &#x1F534; <strong>Rot</strong> = Leer</li>
+        <li><span style="color:#ef4444"><strong>-6</strong></span> = Es fehlen 6 St&#252;ck!</li>
+      </ul>
+    </div>
+    <div class="desc-card" data-lang="vi">
+      <h4><span class="icon" style="background:#2563eb">&#x1F37A;</span> Khu v&#7921;c nh&#224; h&#224;ng</h4>
+      <ul>
+        <li><strong>Bar / &#272;&#7891; u&#7889;ng</strong> <span class="hint">(43 SP)</span></li>
+        <li><strong>Ph&#7909;c v&#7909;</strong> <span class="hint">(24 SP)</span></li>
+        <li>M&#7895;i th&#7867; hi&#7879;n <strong>Hi&#7879;n t&#7841;i/Chu&#7849;n</strong> cho t&#7915;ng SP</li>
+        <li>&#x1F7E2; <strong>Xanh</strong> = &#272;&#7847;y &nbsp;|&nbsp; &#x1F534; <strong>&#272;&#7887;</strong> = H&#7871;t</li>
+        <li><span style="color:#ef4444"><strong>-6</strong></span> = Thi&#7871;u 6 c&#225;i!</li>
+      </ul>
+    </div>
+    <div class="tip-box" data-lang="de"><strong>&#x1F4A1; Tipp:</strong> &#8222;B&#7893; sung h&#224;ng &rarr;&#8220; tippen = Auff&#252;ll-Formular &#246;ffnen (Schritt 1/2)</div>
+    <div class="tip-box" data-lang="vi"><strong>&#x1F4A1; M&#7865;o:</strong> B&#7845;m &#8222;B&#7893; sung h&#224;ng &rarr;&#8220; = M&#7903; form b&#7893; sung (B&#432;&#7899;c 1/2)</div>
+  </div>
+</div>
+
+<!-- ====== SECTION 6: AUFF&#220;LLUNG ====== -->
+<div class="section" id="s6">
+  <div class="section-head">
+    <span class="num">6</span>
+    <span class="title" data-lang="de">Auff&#252;llung &#8212; 2-Schritt-Prozess</span>
+    <span class="title" data-lang="vi">B&#7893; sung &#8212; Quy tr&#236;nh 2 b&#432;&#7899;c</span>
+  </div>
+  <div class="section-body">
+    <!-- Overview table -->
+    <div class="info-table" data-lang="de">
+      <table>
+        <tr><th>Schritt</th><th>Aktion</th><th>Ergebnis</th></tr>
+        <tr><td><span class="step step-blue">1/2</span></td><td>Anforderung erstellen</td><td>&#x26A0;&#xFE0F; Nur Anforderung!</td></tr>
+        <tr><td><span class="step step-green">2/2</span></td><td>Best&#228;tigen &amp; Abbuchen</td><td>&#x2705; Ware abgebucht!</td></tr>
+      </table>
+    </div>
+    <div class="info-table" data-lang="vi">
+      <table>
+        <tr><th>B&#432;&#7899;c</th><th>Thao t&#225;c</th><th>K&#7871;t qu&#7843;</th></tr>
+        <tr><td><span class="step step-blue">1/2</span></td><td>T&#7841;o y&#234;u c&#7847;u</td><td>&#x26A0;&#xFE0F; Ch&#7881; t&#7841;o y&#234;u c&#7847;u!</td></tr>
+        <tr><td><span class="step step-green">2/2</span></td><td>X&#225;c nh&#7853;n &amp; Tr&#7915; kho</td><td>&#x2705; H&#224;ng b&#7883; tr&#7915; kho!</td></tr>
+      </table>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- Step 1/2 -->
+    <div class="desc-card" style="border-left-color:#2563eb" data-lang="de">
+      <h4><span class="icon" style="background:#2563eb">1</span> Schritt 1/2 &#8212; Anforderung</h4>
+      <ul>
+        <li>Bereiche &rarr; <strong>&#8222;B&#7893; sung h&#224;ng &rarr;&#8220;</strong> tippen</li>
+        <li>Modal &#246;ffnet sich mit Produktliste</li>
+        <li>&#x1F50D; Suche + Sortierung (A-Z, Kategorie, Dringlichkeit)</li>
+        <li>Menge eingeben bei jedem Artikel</li>
+        <li>&#x2705; <strong>&#8222;&#x2713; X&#225;c nh&#7853;n y&#234;u c&#7847;u (1/2)&#8220;</strong> tippen</li>
+      </ul>
+    </div>
+    <div class="desc-card" style="border-left-color:#2563eb" data-lang="vi">
+      <h4><span class="icon" style="background:#2563eb">1</span> B&#432;&#7899;c 1/2 &#8212; T&#7841;o y&#234;u c&#7847;u</h4>
+      <ul>
+        <li>Khu v&#7921;c &rarr; B&#7845;m <strong>&#8222;B&#7893; sung h&#224;ng &rarr;&#8220;</strong></li>
+        <li>C&#7917;a s&#7893; m&#7903; v&#7899;i danh s&#225;ch SP</li>
+        <li>&#x1F50D; T&#236;m ki&#7871;m + S&#7855;p x&#7871;p (A-Z, Lo&#7841;i, M&#7913;c kh&#7849;n)</li>
+        <li>Nh&#7853;p s&#7889; l&#432;&#7907;ng cho t&#7915;ng SP</li>
+        <li>&#x2705; B&#7845;m <strong>&#8222;&#x2713; X&#225;c nh&#7853;n y&#234;u c&#7847;u (1/2)&#8220;</strong></li>
+      </ul>
+    </div>
+
+    <div class="phone-frame"><img src="guide/m_auffuellen.png" alt="Auffuellen Modal"></div>
+
+    <div class="desc-card" style="border-left-color:#ef4444" data-lang="de">
+      <h4><span class="icon" style="background:#ef4444">!</span> Artikelzeile erkl&#228;rt</h4>
+      <ul>
+        <li><strong>&#x1F4F7; Bild + Name</strong> <span class="hint">(Produktfoto)</span></li>
+        <li><strong>Getr&#228;nkelager</strong> <span class="hint">(Lagerort)</span></li>
+        <li><strong>Chu&#7849;n: 6</strong> = Soll &nbsp;|&nbsp; <strong>Kho: 0</strong> = Ist</li>
+        <li><span style="color:#ef4444"><strong>-6</strong></span> <span class="hint">(Differenz = fehlt!)</span></li>
+        <li><strong>[ 0 ]</strong> <span class="hint">(Menge eingeben!) Stk./Karton</span></li>
+      </ul>
+    </div>
+    <div class="desc-card" style="border-left-color:#ef4444" data-lang="vi">
+      <h4><span class="icon" style="background:#ef4444">!</span> Gi&#7843;i th&#237;ch d&#242;ng SP</h4>
+      <ul>
+        <li><strong>&#x1F4F7; &#7842;nh + T&#234;n</strong> <span class="hint">(H&#236;nh SP)</span></li>
+        <li><strong>Getr&#228;nkelager</strong> <span class="hint">(V&#7883; tr&#237; kho)</span></li>
+        <li><strong>Chu&#7849;n: 6</strong> = C&#7847;n &nbsp;|&nbsp; <strong>Kho: 0</strong> = Hi&#7879;n t&#7841;i</li>
+        <li><span style="color:#ef4444"><strong>-6</strong></span> <span class="hint">(Ch&#234;nh l&#7879;ch = thi&#7871;u!)</span></li>
+        <li><strong>[ 0 ]</strong> <span class="hint">(Nh&#7853;p SL!) Chi&#7871;c/Th&#249;ng</span></li>
+      </ul>
+    </div>
+
+    <div class="danger-box" data-lang="de"><strong>&#x26A0;&#xFE0F; Wichtig:</strong> Schritt 1/2 erstellt nur eine Anforderung. Ware wird erst bei Schritt 2/2 abgebucht!</div>
+    <div class="danger-box" data-lang="vi"><strong>&#x26A0;&#xFE0F; L&#432;u &#253;:</strong> B&#432;&#7899;c 1/2 ch&#7881; t&#7841;o y&#234;u c&#7847;u. H&#224;ng ch&#7881; b&#7883; tr&#7915; kho &#7903; B&#432;&#7899;c 2/2!</div>
+
+    <div class="spacer"></div>
+
+    <!-- Step 2/2 -->
+    <div class="desc-card" style="border-left-color:#22c55e" data-lang="de">
+      <h4><span class="icon" style="background:#22c55e">2</span> Schritt 2/2 &#8212; Best&#228;tigen</h4>
+      <ul>
+        <li>&#9776; Men&#252; &rarr; <strong>&#8222;B&#7893; sung&#8220;</strong> (Auff&#252;llung)</li>
+        <li>Offene Anforderungen werden angezeigt</li>
+        <li>Mengen pr&#252;fen und ggf. anpassen</li>
+        <li>&#x2705; <strong>&#8222;&#x2713; Best&#228;tigen &amp; Abbuchen (2/2)&#8220;</strong></li>
+        <li>&#x274C; Oder <strong>&#8222;Stornieren&#8220;</strong> zum Abbrechen</li>
+      </ul>
+    </div>
+    <div class="desc-card" style="border-left-color:#22c55e" data-lang="vi">
+      <h4><span class="icon" style="background:#22c55e">2</span> B&#432;&#7899;c 2/2 &#8212; X&#225;c nh&#7853;n</h4>
+      <ul>
+        <li>&#9776; Menu &rarr; <strong>&#8222;B&#7893; sung&#8220;</strong> (Auff&#252;llung)</li>
+        <li>Hi&#7879;n y&#234;u c&#7847;u &#273;ang ch&#7901;</li>
+        <li>Ki&#7875;m tra v&#224; ch&#7881;nh SL n&#7871;u c&#7847;n</li>
+        <li>&#x2705; B&#7845;m <strong>&#8222;&#x2713; Best&#228;tigen &amp; Abbuchen (2/2)&#8220;</strong></li>
+        <li>&#x274C; Ho&#7863;c <strong>&#8222;Stornieren&#8220;</strong> &#273;&#7875; h&#7911;y</li>
+      </ul>
+    </div>
+
+    <div class="phone-frame"><img src="guide/m_auffuellung.png" alt="Auffuellung"></div>
+
+    <div class="tip-box" data-lang="de"><strong>&#x1F4A1; Tipp:</strong> In der Spalte &#8222;Auff&#252;llen&#8220; kann die Menge noch angepasst werden, bevor best&#228;tigt wird.</div>
+    <div class="tip-box" data-lang="vi"><strong>&#x1F4A1; M&#7865;o:</strong> C&#7897;t &#8222;B&#7893; sung&#8220; c&#243; th&#7875; ch&#7881;nh s&#7889; l&#432;&#7907;ng tr&#432;&#7899;c khi x&#225;c nh&#7853;n.</div>
+  </div>
+</div>
+
+<!-- ====== SECTION 7: ZUSAMMENFASSUNG ====== -->
+<div class="section" id="s7">
+  <div class="section-head">
+    <span class="num">7</span>
+    <span class="title" data-lang="de">Zusammenfassung</span>
+    <span class="title" data-lang="vi">T&#7893;ng h&#7907;p</span>
+  </div>
+  <div class="section-body">
+    <div class="info-table" data-lang="de">
+      <table>
+        <tr><th>Aktion</th><th>Mitarbeiter</th><th>Admin</th></tr>
+        <tr><td>Dashboard</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Artikel ansehen</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Wareneingang</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Warenausgang</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Auff&#252;llung 1/2</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Auff&#252;llung 2/2</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Neuen Artikel anlegen</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Artikel genehmigen</td><td>&#x274C;</td><td>&#x2705;</td></tr>
+      </table>
+    </div>
+    <div class="info-table" data-lang="vi">
+      <table>
+        <tr><th>Thao t&#225;c</th><th>Nh&#226;n vi&#234;n</th><th>Admin</th></tr>
+        <tr><td>B&#7843;ng &#273;i&#7873;u khi&#7875;n</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Xem SP</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Nh&#7853;p kho</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Xu&#7845;t kho</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>B&#7893; sung 1/2</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>B&#7893; sung 2/2</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>T&#7841;o SP m&#7899;i</td><td>&#x2705;</td><td>&#x2705;</td></tr>
+        <tr><td>Duy&#7879;t SP</td><td>&#x274C;</td><td>&#x2705;</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Desktop link -->
+<div class="desktop-link">
+  <span data-lang="de">&#x1F5A5; Ausf&#252;hrliche Anleitung f&#252;r Desktop:</span>
+  <span data-lang="vi">&#x1F5A5; H&#432;&#7899;ng d&#7851;n chi ti&#7871;t cho m&#225;y t&#237;nh:</span>
+  <br><a href="guide.html">guide.html &rarr;</a>
+</div>
+
+<script>
+function setLang(lang){
+  document.querySelectorAll('[data-lang]').forEach(el=>{
+    if(el.getAttribute('data-lang')===lang){
+      if(el.closest('.section-head')) el.style.display='inline';
+      else if(el.closest('.header')) el.style.display='block';
+      else el.style.display='';
+    } else {
+      el.style.display='none';
+    }
+  });
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.classList.toggle('active',b.textContent.includes(lang.toUpperCase()));
+  });
+  localStorage.setItem('guide_lang',lang);
+}
+setLang(localStorage.getItem('guide_lang')||'vi');
+</script>
+</body>
+</html>
