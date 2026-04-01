@@ -15,7 +15,8 @@ function initRealtime() {
     "bewegungen", "bestellungen", "bestellliste",
     "transfers", "transfer_items", "standorte",
     "anforderungen", "anforderung_items", "auffuellungen",
-    "kategorien", "lieferanten", "users", "einstellungen"
+    "kategorien", "lieferanten", "users", "einstellungen",
+    "lagerplaetze", "inventur_protokolle", "inventur_items"
   ];
 
   _rtChannel = sb.channel("lager-realtime");
@@ -105,4 +106,3 @@ function showSyncToast() {
 window.addEventListener("beforeunload", () => {
   if (_rtChannel) { _rtChannel.unsubscribe(); _rtChannel = null; }
 });
-n

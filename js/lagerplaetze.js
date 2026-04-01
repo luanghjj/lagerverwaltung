@@ -145,6 +145,15 @@ function saveLagerplatz(id, isEdit) {
 
   save(); closeModal(); render();
   toast(`📦 ${name} ✓`, "s");
+
+  // Sync to Supabase
+  if (typeof sbSaveLagerplatz === "function") sbSaveLagerplatz(f);
+  // If renamed, also sync affected articles
+  if (isEdit) {
+    D.artikel.forEach(a => {
+      if (a.lagerort?.[f.standortId] === name && typeof sbSaveArtikel === "function") sbSaveArtikel(a);
+    });
+  }
 }
 
 function delLagerplatz(id) {
@@ -165,5 +174,11 @@ function delLagerplatz(id) {
     // Remove from D.lagerplaetze
     D.lagerplaetze = D.lagerplaetze.filter(x=>x.id!==id);
     save(); render(); toast("✓","i");
+    // Sync to Supabase
+    if (typeof sbDeleteLagerplatz === "function") sbDeleteLagerplatz(id);
+    // Sync affected articles
+    D.artikel.forEach(a => {
+      if (typeof sbSaveArtikel === "function" && a.lagerort) sbSaveArtikel(a);
+    });
   });
 }

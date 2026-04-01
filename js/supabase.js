@@ -288,14 +288,16 @@ async function sbSaveArtikel(a) {
     created_by: a.createdBy || null,
     rejected_reason: a.rejectedReason || null
   };
-  await sb.from("artikel").upsert(artData).catch(e => {
+  const { error: artErr } = await sb.from("artikel").upsert(artData);
+  if (artErr) {
     // Fallback: if status columns don't exist yet, retry without them
-    if (e.message?.includes("status") || e.message?.includes("created_by") || e.message?.includes("rejected_reason")) {
-      const fallback = { id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "", barcodes: a.barcodes || [], bilder: a.bilder || "", beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "", einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0 };
-      return sb.from("artikel").upsert(fallback);
+    if (artErr.message?.includes("status") || artErr.message?.includes("created_by") || artErr.message?.includes("rejected_reason")) {
+      const fallback = { id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "", barcodes: a.barcodes || [], bilder: a.bilder || [], beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "", einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0 };
+      await sb.from("artikel").upsert(fallback);
+    } else {
+      console.error("[sbSaveArtikel] artikel upsert:", artErr.message);
     }
-    throw e;
-  });
+  }
   // 2. Upsert bestand per standort
   for (const [sid, ist] of Object.entries(a.istBestand || {})) {
     await sb.from("artikel_bestand").upsert({
