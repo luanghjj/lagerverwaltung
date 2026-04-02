@@ -78,7 +78,7 @@ function renderInventur(vS, aS) {
 
     let arts = D.artikel.filter(a => INV_KAT==="all" || a.kategorien.includes(INV_KAT));
 
-    // Search filter
+    // Search filter      
     if (INV_SEARCH) {
       const q = norm(INV_SEARCH);
       arts = arts.filter(a => norm(a.name).includes(q) || norm(a.name_vi).includes(q) || norm(a.sku).includes(q) || (a.barcodes||[]).some(bc => bc.toLowerCase().includes(q)));

@@ -113,7 +113,6 @@ function removeTgChannel(idx) {
     save(); render(); toast("✓","i");
   });
 }
-
 function testTelegram() {
   // Legacy: test first channel
   if (D.einstellungen.tgChannels?.length) testTgChannel(0);
