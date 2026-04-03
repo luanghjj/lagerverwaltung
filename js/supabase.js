@@ -278,15 +278,12 @@ async function sbDelete(table, id) {
 
 // Save artikel + bestand + kategorien + lieferanten
 async function sbSaveArtikel(a) {
-  // 1. Upsert artikel (all columns)
+  // 1. Upsert artikel (only columns that exist in DB)
   const { error: artErr } = await sb.from("artikel").upsert({
     id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "",
     barcodes: a.barcodes || [], bilder: a.bilder || [],
     beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "",
-    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0,
-    status: a.status || "active",
-    created_by: a.createdBy || null,
-    rejected_reason: a.rejectedReason || null
+    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0
   });
   if (artErr) {
     console.error("[sbSaveArtikel] artikel upsert:", artErr.message);
