@@ -278,25 +278,25 @@ async function sbDelete(table, id) {
 
 // Save artikel + bestand + kategorien + lieferanten
 async function sbSaveArtikel(a) {
-  // 1. Upsert artikel (status/created_by/rejected_reason added gracefully)
-  const artData = {
+  // 1. Upsert artikel — use safe columns first
+  const baseData = {
     id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "",
     barcodes: a.barcodes || [], bilder: a.bilder || [],
     beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "",
-    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0,
-    status: a.status || "active",
-    created_by: a.createdBy || null,
-    rejected_reason: a.rejectedReason || null
+    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0
   };
-  const { error: artErr } = await sb.from("artikel").upsert(artData);
-  if (artErr) {
-    // Fallback: if status columns don't exist yet, retry without them
-    if (artErr.message?.includes("status") || artErr.message?.includes("created_by") || artErr.message?.includes("rejected_reason")) {
-      const fallback = { id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "", barcodes: a.barcodes || [], bilder: a.bilder || [], beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "", einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0 };
-      await sb.from("artikel").upsert(fallback);
-    } else {
-      console.error("[sbSaveArtikel] artikel upsert:", artErr.message);
-    }
+  const { error: baseErr } = await sb.from("artikel").upsert(baseData);
+  if (baseErr) {
+    console.error("[sbSaveArtikel] artikel upsert:", baseErr.message);
+    return; // Don't continue if base upsert fails
+  }
+  // Try to update status columns (may not exist in older schemas)
+  if (a.status && a.status !== "active") {
+    sb.from("artikel").update({
+      status: a.status, created_by: a.createdBy || null, rejected_reason: a.rejectedReason || null
+    }).eq("id", a.id).then(({ error }) => {
+      if (error) { /* columns don't exist, ignore silently */ }
+    });
   }
   // 2. Upsert bestand per standort
   for (const [sid, ist] of Object.entries(a.istBestand || {})) {
