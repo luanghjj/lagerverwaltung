@@ -271,19 +271,17 @@ async function saveStandort(id, isEdit) {
         }
         copied++;
       }
-      // Sync copied artikel stock config to Supabase
+      // Sync ALL artikel stock config to Supabase for the new Standort
       if (typeof sb !== "undefined") {
         for (const a of D.artikel) {
-          if ((a.sollBestand[id] || 0) > 0 || (a.mindestmenge[id] || 0) > 0) {
-            const { error } = await sb.from("artikel_bestand").upsert({
-              artikel_id: a.id, standort_id: id,
-              ist_bestand: 0,
-              soll_bestand: a.sollBestand[id] || 0,
-              mindestmenge: a.mindestmenge[id] || 0,
-              lagerort: a.lagerort?.[id] || ""
-            }, { onConflict: "artikel_id,standort_id" });
-            if (error) console.warn("[copyStock]", error.message);
-          }
+          const { error } = await sb.from("artikel_bestand").upsert({
+            artikel_id: a.id, standort_id: id,
+            ist_bestand: 0,
+            soll_bestand: a.sollBestand[id] || 0,
+            mindestmenge: a.mindestmenge[id] || 0,
+            lagerort: a.lagerort?.[id] || ""
+          }, { onConflict: "artikel_id,standort_id" });
+          if (error) console.warn("[copyStock]", error.message);
         }
       }
       save();
