@@ -395,17 +395,19 @@ async function sbDeleteUser(id) {
 
 // Save bereich + bereich_artikel
 async function sbSaveBereich(br) {
-  // Upsert bereiche — fallback to update if conflict on other constraint
-  const { error: brErr } = await sb.from("bereiche").upsert({
+  const row = {
     id: br.id, name: br.name, name_vi: br.name_vi || "",
     standort_id: br.standortId, farbe: br.farbe || "#3B82F6", icon: br.icon || "🍽"
-  }, { onConflict: "id" });
-  if (brErr) {
-    // Fallback: direct update
-    await sb.from("bereiche").update({
-      name: br.name, name_vi: br.name_vi || "",
-      standort_id: br.standortId, farbe: br.farbe || "#3B82F6", icon: br.icon || "🍽"
+  };
+  // Try insert first (for new bereiche), fall back to update
+  const { error: insErr } = await sb.from("bereiche").insert(row);
+  if (insErr) {
+    // Row exists → update
+    const { error: updErr } = await sb.from("bereiche").update({
+      name: row.name, name_vi: row.name_vi,
+      standort_id: row.standort_id, farbe: row.farbe, icon: row.icon
     }).eq("id", br.id);
+    if (updErr) { console.warn("[sbSaveBereich] bereiche:", updErr.message); return; }
   }
   // Replace bereich_artikel (deduplicate by artikel_id first)
   await sb.from("bereich_artikel").delete().eq("bereich_id", br.id);

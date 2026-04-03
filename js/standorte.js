@@ -264,11 +264,19 @@ function saveStandort(id, isEdit) {
         if (typeof sbSaveBereich === "function") sbSaveBereich(newBr).catch(e => console.error("sbSaveBereich:", e));
         copied++;
       });
-      // Sync copied artikel stock to Supabase
-      if (typeof sbSaveArtikel === "function") {
+      // Sync copied artikel stock config to Supabase (lightweight: only artikel_bestand)
+      if (typeof sb !== "undefined") {
         D.artikel.forEach(a => {
           if ((a.sollBestand[id] || 0) > 0 || (a.mindestmenge[id] || 0) > 0) {
-            sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+            sb.from("artikel_bestand").upsert({
+              artikel_id: a.id, standort_id: id,
+              ist_bestand: 0,
+              soll_bestand: a.sollBestand[id] || 0,
+              mindestmenge: a.mindestmenge[id] || 0,
+              lagerort: a.lagerort?.[id] || ""
+            }, { onConflict: "artikel_id,standort_id" }).then(({ error }) => {
+              if (error) console.warn("[copyStock]", error.message);
+            });
           }
         });
       }
