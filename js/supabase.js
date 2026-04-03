@@ -345,13 +345,12 @@ async function sbSaveBewegung(b) {
   });
 }
 
-// Save bestellung
+// Save bestellung (DB has: id, artikel_id, lieferant_id, standort_id, menge, status, datum, erstellt_von)
 async function sbSaveBestellung(b) {
   await sb.from("bestellungen").upsert({
     id: b.id, artikel_id: b.artikelId, lieferant_id: b.lieferantId,
-    standort_id: b.standortId, menge: b.menge, empfangen: b.empfangen,
-    fehlmenge: b.fehlmenge, status: b.status, datum: b.datum,
-    erstellt_von: b.erstelltVon || null
+    standort_id: b.standortId, menge: b.menge, status: b.status,
+    datum: b.datum, erstellt_von: b.erstelltVon || null
   });
 }
 
@@ -422,14 +421,13 @@ async function sbDeleteBereich(id) {
   await sb.from("bereiche").delete().eq("id", id);
 }
 
-// Save lieferant
+// Save lieferant (DB has: id, name, kontakt, telefon, email, adresse, notiz, liefertage, rhythmus, vorlaufzeit)
 async function sbSaveLieferant(l) {
   await sb.from("lieferanten").upsert({
     id: l.id, name: l.name, kontakt: l.kontakt || "", telefon: l.telefon || "",
     email: l.email || "", adresse: l.adresse || "", notiz: l.notiz || "",
-    website: l.website || "", kundennummer: l.kundennummer || "",
-    zahlungsziel: l.zahlungsziel || "", mindestbestellwert: l.mindestbestellwert || 0,
-    lieferzeit: l.lieferzeit || "", bewertung: l.bewertung || 0
+    liefertage: l.liefertage || [], rhythmus: l.rhythmus || "weekly",
+    vorlaufzeit: l.vorlaufzeit || 0
   }, { onConflict: "id" });
 }
 
