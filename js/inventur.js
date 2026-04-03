@@ -270,3 +270,5 @@ function exportInvPDF(idx) {
 // ═══ UMBUCHEN (Transfer between locations) ═══
 let TF_BATCH = [];
 let TF_HSEARCH = "";
+let TF_VON = "";
+let TF_NACH = "";

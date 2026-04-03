@@ -54,13 +54,13 @@ function renderTransfer(vS, aS) {
   h += `<h3 style="font-size:13px;font-weight:700;margin-bottom:8px">⇄ ${LANG==="vi"?"Tạo chuyển kho mới":"Neuen Transfer erstellen"}</h3>`;
   h += `<div style="font-size:11px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--b3);border-radius:6px">📤 ${LANG==="vi"?"Hàng sẽ được trừ ngay tại CN gốc. CN đích phải xác nhận nhận hàng.":"Ware wird sofort am Quell-Standort abgebucht. Der Ziel-Standort muss den Empfang bestätigen."}</div>`;
 
-  // Pick default Von = standort with most stock
+  // Pick default Von = standort with most stock (preserve user selection)
   const stStockCount = vS.map(s => ({ id: s.id, count: D.artikel.reduce((sum, a) => sum + (a.istBestand[s.id] || 0), 0) }));
   stStockCount.sort((a, b) => b.count - a.count);
-  const defaultVon = stStockCount[0]?.id || vS[0]?.id;
-  const defaultNach = vS.find(s => s.id !== defaultVon)?.id || vS[1]?.id;
-  h += `<div class="g2"><div class="fg"><label>📤 ${LANG==="vi"?"Từ kho":"Von Standort"}</label><select class="sel" id="tf_von">${vS.map(s=>`<option value="${s.id}" ${s.id===defaultVon?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>`;
-  h += `<div class="fg"><label>📥 ${LANG==="vi"?"Đến kho":"Nach Standort"}</label><select class="sel" id="tf_nach">${vS.map(s=>`<option value="${s.id}" ${s.id===defaultNach?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div></div>`;
+  const selVon = TF_VON && vS.some(s=>s.id===TF_VON) ? TF_VON : (stStockCount[0]?.id || vS[0]?.id);
+  const selNach = TF_NACH && vS.some(s=>s.id===TF_NACH) ? TF_NACH : (vS.find(s => s.id !== selVon)?.id || vS[1]?.id);
+  h += `<div class="g2"><div class="fg"><label>📤 ${LANG==="vi"?"Từ kho":"Von Standort"}</label><select class="sel" id="tf_von" onchange="TF_VON=this.value">${vS.map(s=>`<option value="${s.id}" ${s.id===selVon?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>`;
+  h += `<div class="fg"><label>📥 ${LANG==="vi"?"Đến kho":"Nach Standort"}</label><select class="sel" id="tf_nach" onchange="TF_NACH=this.value">${vS.map(s=>`<option value="${s.id}" ${s.id===selNach?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div></div>`;
 
   h += `<div class="fg"><label>${t("c.article")} ${LANG==="vi"?"tìm":"suchen"}</label><input class="inp" id="tf_search" placeholder="${t("c.search")}" oninput="tfSearch(this.value)"></div>`;
   h += `<div id="tf_results"></div>`;
@@ -259,6 +259,9 @@ function execTransfer() {
       D.transfers.unshift({ id:uid(), vonId, nachId, items, status:"unterwegs", datum:nw(), benutzer:U.id });
     }
     TF_BATCH = [];
+    TF_HSEARCH = "";
+    TF_VON = "";
+    TF_NACH = "";
     save(); render();
     if (typeof sbSaveTransfer === "function") sbSaveTransfer(D.transfers[0]).catch(e => console.error("sbSaveTransfer:", e));
     // Also save each bewegung to Supabase
