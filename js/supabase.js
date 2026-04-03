@@ -289,14 +289,25 @@ async function sbSaveArtikel(a) {
     console.error("[sbSaveArtikel] artikel upsert:", artErr.message);
     return;
   }
-  // 2. Upsert bestand per standort
+  // 2. Upsert bestand per standort (existing keys)
+  const syncedSids = new Set();
   for (const [sid, ist] of Object.entries(a.istBestand || {})) {
+    syncedSids.add(sid);
     await sb.from("artikel_bestand").upsert({
       artikel_id: a.id, standort_id: sid,
       ist_bestand: ist, soll_bestand: (a.sollBestand || {})[sid] || 0,
       mindestmenge: (a.mindestmenge || {})[sid] || 0,
       lagerort: (a.lagerort || {})[sid] || ""
     }, { onConflict: "artikel_id,standort_id" });
+  }
+  // 2b. Ensure all active standorte have a bestand row (fill missing with 0)
+  if (typeof D !== "undefined" && D.standorte) {
+    for (const s of D.standorte.filter(s => s.aktiv && !syncedSids.has(s.id))) {
+      await sb.from("artikel_bestand").upsert({
+        artikel_id: a.id, standort_id: s.id,
+        ist_bestand: 0, soll_bestand: 0, mindestmenge: 0, lagerort: ""
+      }, { onConflict: "artikel_id,standort_id" });
+    }
   }
   // 3. Replace kategorien
   await sb.from("artikel_kategorien").delete().eq("artikel_id", a.id);
