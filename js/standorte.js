@@ -216,7 +216,7 @@ function editStandort(id) {
   document.body.insertAdjacentHTML("beforeend", h);
 }
 
-function saveStandort(id, isEdit) {
+async function saveStandort(id, isEdit) {
   const name = document.getElementById("se_name")?.value || "";
   const adresse = document.getElementById("se_adresse")?.value || "";
   const aktiv = document.getElementById("se_aktiv")?.checked ?? true;
@@ -246,11 +246,16 @@ function saveStandort(id, isEdit) {
         a.lagerort[id] = "";
       }
     });
-    // Copy Bereiche from source Standort
+    save(); closeModal(); render();
+    // *** Save Standort to Supabase FIRST (must exist before FK references) ***
+    if (typeof sbSaveStandort === "function") {
+      try { await sbSaveStandort(f); } catch(e) { console.error("sbStandort:", e); }
+    }
+    // Now copy Bereiche + Bestand (standort_id exists in DB now)
     if (copyFrom) {
       const srcBereiche = D.bereiche.filter(b => b.standortId === copyFrom);
       let copied = 0;
-      srcBereiche.forEach(src => {
+      for (const src of srcBereiche) {
         const newBr = {
           id: uid(),
           name: src.name,
@@ -261,27 +266,31 @@ function saveStandort(id, isEdit) {
           artikel: src.artikel.map(ba => ({ artikelId: ba.artikelId, soll: ba.soll, quelleId: id }))
         };
         D.bereiche.push(newBr);
-        if (typeof sbSaveBereich === "function") sbSaveBereich(newBr).catch(e => console.error("sbSaveBereich:", e));
+        if (typeof sbSaveBereich === "function") {
+          try { await sbSaveBereich(newBr); } catch(e) { console.error("sbSaveBereich:", e); }
+        }
         copied++;
-      });
-      // Sync copied artikel stock config to Supabase (lightweight: only artikel_bestand)
+      }
+      // Sync copied artikel stock config to Supabase
       if (typeof sb !== "undefined") {
-        D.artikel.forEach(a => {
+        for (const a of D.artikel) {
           if ((a.sollBestand[id] || 0) > 0 || (a.mindestmenge[id] || 0) > 0) {
-            sb.from("artikel_bestand").upsert({
+            const { error } = await sb.from("artikel_bestand").upsert({
               artikel_id: a.id, standort_id: id,
               ist_bestand: 0,
               soll_bestand: a.sollBestand[id] || 0,
               mindestmenge: a.mindestmenge[id] || 0,
               lagerort: a.lagerort?.[id] || ""
-            }, { onConflict: "artikel_id,standort_id" }).then(({ error }) => {
-              if (error) console.warn("[copyStock]", error.message);
-            });
+            }, { onConflict: "artikel_id,standort_id" });
+            if (error) console.warn("[copyStock]", error.message);
           }
-        });
+        }
       }
+      save();
       toast(`📋 ${copied} ${LANG==="vi"?"khu vực + cấu hình SP đã copy":"Bereiche + Artikelkonfig kopiert"}`, "s");
     }
+    toast("✓", "s");
+    return;
   }
   save(); closeModal(); render();
   if (typeof sbSaveStandort === "function") sbSaveStandort(f).catch(e => console.error("sbStandort:", e));
