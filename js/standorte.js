@@ -279,7 +279,7 @@ function delStandort(id) {
     });
     D.users.forEach(u => { u.standorte = u.standorte.filter(x => x !== id); if (!u.standorte.length) u.standorte = ["all"]; });
     save(); render(); toast("✓", "i");
-    if (typeof sb !== "undefined") sb.from("standorte").update({ aktiv: false }).eq("id", id).catch(e => console.error("sbDelStandort:", e));
+    if (typeof sb !== "undefined") sb.from("standorte").update({ aktiv: false }).eq("id", id).then(({ error }) => { if (error) console.error("sbDelStandort:", error.message); });
   });
 }
 

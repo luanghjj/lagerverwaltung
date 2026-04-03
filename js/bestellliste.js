@@ -511,7 +511,7 @@ function doSubmitGroup(liefKey) {
   // Sync bestellungen to Supabase
   items.forEach(it => {
     const b = D.bestellungen.find(x => x.artikelId === it.artikelId && x.status === 'bestellt');
-    if (b && typeof sb !== 'undefined') sb.from('bestellungen').upsert({ id: b.id, artikel_id: b.artikelId, lieferant_id: b.lieferantId, standort_id: b.standortId, menge: b.menge, status: b.status, datum: b.datum, erstellt_von: b.erstelltVon }, { onConflict: 'id' }).catch(e => console.error('sbBest:', e));
+    if (b && typeof sb !== 'undefined') sb.from('bestellungen').upsert({ id: b.id, artikel_id: b.artikelId, lieferant_id: b.lieferantId, standort_id: b.standortId, menge: b.menge, status: b.status, datum: b.datum, erstellt_von: b.erstelltVon }, { onConflict: 'id' }).then(({ error }) => { if (error) console.error('sbBest:', error.message); });
     if (typeof sbDeleteBestelllisteItem === 'function') sbDeleteBestelllisteItem(it.id).catch(e => console.error('sbDelBL:', e));
   });
   toast(`✓ ${count} ${t("c.article")} → ${lief?.name||""} ${LANG==="vi"?"đã đặt hàng":"bestellt"} (${LANG==="vi"?"xem tại Bestellungen":"siehe Bestellungen"})`, "s");

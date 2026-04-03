@@ -542,7 +542,7 @@ function delArtikel(id) {
     if (typeof logActivity === "function") logActivity("art.delete", artN(a), {id,name:a?.name,sku:a?.sku});
     D.artikel = D.artikel.filter(x=>x.id!==id);
     save(); render();
-    if (typeof sb !== "undefined") sb.from("artikel").update({ deleted_at: new Date().toISOString() }).eq("id", id).then(() => {}).catch(e => console.error("sbDelArtikel:", e));
+    if (typeof sb !== "undefined") sb.from("artikel").update({ deleted_at: new Date().toISOString() }).eq("id", id).then(({ error }) => { if (error) console.error("sbDelArtikel:", error.message); });
     toast("✓","i");
   });
 }

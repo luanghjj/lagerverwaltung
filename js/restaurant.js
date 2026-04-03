@@ -695,7 +695,7 @@ function undoAuffuellung(afId) {
     D.auffuellungen = D.auffuellungen.filter(x=>x.id!==afId);
     save(); render();
     if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
-    if (typeof sb !== "undefined") sb.from("auffuellungen").delete().eq("id", afId).catch(e => console.error("sbDelAuf:", e));
+    if (typeof sb !== "undefined") sb.from("auffuellungen").delete().eq("id", afId).then(({ error }) => { if (error) console.error("sbDelAuf:", error.message); });
     toast(`↩ ${af.menge}× ${artN(a)} ${LANG==="vi"?"đã hoàn tác":"rückgängig"}`, "s");
   });
 }
