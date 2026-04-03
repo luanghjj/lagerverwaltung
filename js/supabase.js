@@ -395,16 +395,31 @@ async function sbDeleteUser(id) {
 
 // Save bereich + bereich_artikel
 async function sbSaveBereich(br) {
-  await sb.from("bereiche").upsert({
+  // Upsert bereiche — fallback to update if conflict on other constraint
+  const { error: brErr } = await sb.from("bereiche").upsert({
     id: br.id, name: br.name, name_vi: br.name_vi || "",
     standort_id: br.standortId, farbe: br.farbe || "#3B82F6", icon: br.icon || "🍽"
   }, { onConflict: "id" });
-  // Replace bereich_artikel
+  if (brErr) {
+    // Fallback: direct update
+    await sb.from("bereiche").update({
+      name: br.name, name_vi: br.name_vi || "",
+      standort_id: br.standortId, farbe: br.farbe || "#3B82F6", icon: br.icon || "🍽"
+    }).eq("id", br.id);
+  }
+  // Replace bereich_artikel (deduplicate by artikel_id first)
   await sb.from("bereich_artikel").delete().eq("bereich_id", br.id);
   if (br.artikel?.length) {
-    await sb.from("bereich_artikel").insert(
-      br.artikel.map(ba => ({ bereich_id: br.id, artikel_id: ba.artikelId, soll: ba.soll || 1 }))
+    const seen = new Set();
+    const unique = br.artikel.filter(ba => {
+      if (seen.has(ba.artikelId)) return false;
+      seen.add(ba.artikelId);
+      return true;
+    });
+    const { error: baErr } = await sb.from("bereich_artikel").insert(
+      unique.map(ba => ({ bereich_id: br.id, artikel_id: ba.artikelId, soll: ba.soll || 1 }))
     );
+    if (baErr) console.warn("[sbSaveBereich] bereich_artikel:", baErr.message);
   }
 }
 
