@@ -230,14 +230,21 @@ function saveStandort(id, isEdit) {
     if (idx >= 0) D.standorte[idx] = f;
   } else {
     D.standorte.push(f);
-    // Initialize stock fields for all articles (always 0 for new Standort)
+    // Initialize stock fields for all articles
     const copyFrom = document.getElementById("se_copy_bereiche")?.value || "";
     D.artikel.forEach(a => {
       a.istBestand[id] = 0;
-      a.sollBestand[id] = 0;
-      a.mindestmenge[id] = 0;
       if (!a.lagerort) a.lagerort = {};
-      a.lagerort[id] = "";
+      if (copyFrom) {
+        // Copy sollBestand, mindestmenge, lagerort from source
+        a.sollBestand[id] = a.sollBestand[copyFrom] || 0;
+        a.mindestmenge[id] = a.mindestmenge[copyFrom] || 0;
+        a.lagerort[id] = a.lagerort[copyFrom] || "";
+      } else {
+        a.sollBestand[id] = 0;
+        a.mindestmenge[id] = 0;
+        a.lagerort[id] = "";
+      }
     });
     // Copy Bereiche from source Standort
     if (copyFrom) {
@@ -257,7 +264,15 @@ function saveStandort(id, isEdit) {
         if (typeof sbSaveBereich === "function") sbSaveBereich(newBr).catch(e => console.error("sbSaveBereich:", e));
         copied++;
       });
-      if (copied) toast(`📋 ${copied} ${LANG==="vi"?"khu vực đã copy":"Bereiche kopiert"}`, "s");
+      // Sync copied artikel stock to Supabase
+      if (typeof sbSaveArtikel === "function") {
+        D.artikel.forEach(a => {
+          if ((a.sollBestand[id] || 0) > 0 || (a.mindestmenge[id] || 0) > 0) {
+            sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+          }
+        });
+      }
+      toast(`📋 ${copied} ${LANG==="vi"?"khu vực + cấu hình SP đã copy":"Bereiche + Artikelkonfig kopiert"}`, "s");
     }
   }
   save(); closeModal(); render();
