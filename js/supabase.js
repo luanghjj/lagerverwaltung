@@ -278,25 +278,19 @@ async function sbDelete(table, id) {
 
 // Save artikel + bestand + kategorien + lieferanten
 async function sbSaveArtikel(a) {
-  // 1. Upsert artikel — use safe columns first
-  const baseData = {
+  // 1. Upsert artikel (all columns)
+  const { error: artErr } = await sb.from("artikel").upsert({
     id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "",
     barcodes: a.barcodes || [], bilder: a.bilder || [],
     beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "",
-    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0
-  };
-  const { error: baseErr } = await sb.from("artikel").upsert(baseData);
-  if (baseErr) {
-    console.error("[sbSaveArtikel] artikel upsert:", baseErr.message);
-    return; // Don't continue if base upsert fails
-  }
-  // Try to update status columns (may not exist in older schemas)
-  if (a.status && a.status !== "active") {
-    sb.from("artikel").update({
-      status: a.status, created_by: a.createdBy || null, rejected_reason: a.rejectedReason || null
-    }).eq("id", a.id).then(({ error }) => {
-      if (error) { /* columns don't exist, ignore silently */ }
-    });
+    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0,
+    status: a.status || "active",
+    created_by: a.createdBy || null,
+    rejected_reason: a.rejectedReason || null
+  });
+  if (artErr) {
+    console.error("[sbSaveArtikel] artikel upsert:", artErr.message);
+    return;
   }
   // 2. Upsert bestand per standort
   for (const [sid, ist] of Object.entries(a.istBestand || {})) {
