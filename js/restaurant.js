@@ -205,24 +205,34 @@ function renderAnfTable(items, brId) {
       }
     }
 
-    h += `<div class="anf-row" data-name="${norm(it.art?.name||"")} ${norm(it.art?.name_vi||"")}" style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--bd);${isEmpty?"background:var(--rA);border-radius:6px;margin-bottom:2px":""}">`;
-    // Left: Article info with thumbnail
-    h += `<div class="th" style="width:30px;height:30px">${it.art?.bilder?.length?`<img src="${esc(it.art.bilder[0])}" style="width:100%;height:100%;object-fit:cover">`:""}</div>`;
+    h += `<div class="anf-row" data-name="${norm(it.art?.name||"")} ${norm(it.art?.name_vi||"")}" style="padding:10px 8px;border-bottom:1px solid var(--bd);${isEmpty?"background:var(--rA);border-radius:6px;margin-bottom:2px":""}">`;
+    // Row 1: Name + Info + Input (right)
+    h += `<div style="display:flex;align-items:center;gap:8px">`;
     h += `<div style="flex:1;min-width:0">`;
-    h += `<div style="font-weight:600;font-size:12.5px">${esc(artN(it.art))}</div>`;
-    h += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px">`;
-    if (lagerort) h += `<span class="loc-tag" style="font-size:8.5px;padding:0 4px">📦 ${esc(lagerort)}</span>`;
-    h += `<span style="font-size:9.5px;color:var(--t3)">${LANG==="vi"?"Chuẩn":"Soll"}: ${it.soll}</span>`;
-    h += `<span style="font-size:9.5px;font-family:var(--m);color:${it.lagerIst>=it.soll?"var(--gn)":it.lagerIst>0?"var(--yl)":"var(--rd)"};font-weight:${isEmpty?"700":"500"}">${LANG==="vi"?"Kho":"Lager"}: ${it.lagerIst}${isEmpty?" ⚠":""}</span>`;
-    if (it.isExtern) h += `<span style="font-size:8px;padding:1px 4px;background:var(--pA);color:var(--pu);border-radius:3px;font-weight:600">← ${esc(it.quelleName||"")}</span>`;
-    if (fehl > 0) h += `<span style="font-size:8.5px;padding:1px 4px;background:var(--rA);color:var(--rd);border-radius:3px;font-weight:600">−${fehl}</span>`;
+    h += `<div style="font-weight:600;font-size:15px">${esc(artN(it.art))}</div>`;
+    h += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px">`;
+    if (lagerort) h += `<span class="loc-tag" style="font-size:10px;padding:1px 5px">📦 ${esc(lagerort)}</span>`;
+    h += `<span style="font-size:11px;color:var(--t3)">${LANG==="vi"?"Chuẩn":"Soll"}: ${it.soll}</span>`;
+    h += `<span style="font-size:11px;font-family:var(--m);color:${it.lagerIst>=it.soll?"var(--gn)":it.lagerIst>0?"var(--yl)":"var(--rd)"};font-weight:${isEmpty?"700":"500"}">${LANG==="vi"?"Kho":"Lager"}: ${it.lagerIst}${isEmpty?" ⚠":""}</span>`;
+    if (it.isExtern) h += `<span style="font-size:9.5px;padding:1px 5px;background:var(--pA);color:var(--pu);border-radius:3px;font-weight:600">← ${esc(it.quelleName||"")}</span>`;
+    if (fehl > 0) h += `<span style="font-size:10px;padding:1px 5px;background:var(--rA);color:var(--rd);border-radius:3px;font-weight:600">−${fehl}</span>`;
     h += `</div></div>`;
-    // Right: Input + Unit + Remove
+    // Input + Unit + Remove (right side)
     h += `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">`;
-    h += `<input class="inp" type="number" min="0" value="${it._enteredQty||0}" id="anf_qty_${i}" style="width:55px;text-align:center;padding:5px;font-family:var(--m);font-size:15px;font-weight:700;border:2px solid ${(it._enteredQty||0)>0?"var(--gn)":"var(--ac)"}" placeholder="0">`;
-    h += `<span style="font-size:10px;color:var(--t3);min-width:22px">${esc(it.art?.einheit||"")}</span>`;
-    h += `<button class="bi dn" onclick="anfRemItem(${i})" style="font-size:10px">✕</button>`;
+    h += `<input class="inp" type="number" min="0" value="${it._enteredQty||0}" id="anf_qty_${i}" style="width:58px;text-align:center;padding:6px;font-family:var(--m);font-size:16px;font-weight:700;border:2px solid ${(it._enteredQty||0)>0?"var(--gn)":"var(--ac)"}" placeholder="0">`;
+    h += `<span style="font-size:11px;color:var(--t3);min-width:24px">${esc(it.art?.einheit||"")}</span>`;
+    h += `<button class="bi dn" onclick="anfRemItem(${i})" style="font-size:11px">✕</button>`;
     h += `</div></div>`;
+    // Row 2: Images underneath
+    const imgs = it.art?.bilder || [];
+    if (imgs.length > 0) {
+      h += `<div style="display:flex;gap:4px;margin-top:6px;padding-left:2px">`;
+      imgs.slice(0, 2).forEach((img, imgIdx) => {
+        h += `<div style="width:100px;height:100px;border-radius:6px;background:var(--b4);overflow:hidden;cursor:pointer" onclick="event.stopPropagation();openImgLightbox(${JSON.stringify(imgs).replace(/"/g,'&quot;')},${imgIdx})"><img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover"></div>`;
+      });
+      h += `</div>`;
+    }
+    h += `</div>`;
   });
   return h;
 }
@@ -698,6 +708,41 @@ function undoAuffuellung(afId) {
     if (typeof sb !== "undefined") sb.from("auffuellungen").delete().eq("id", afId).then(({ error }) => { if (error) console.error("sbDelAuf:", error.message); });
     toast(`↩ ${af.menge}× ${artN(a)} ${LANG==="vi"?"đã hoàn tác":"rückgängig"}`, "s");
   });
+}
+
+// ═══ IMAGE LIGHTBOX ═══
+let _lbImgs = [];
+let _lbIdx = 0;
+function openImgLightbox(imgs, idx) {
+  _lbImgs = imgs; _lbIdx = idx || 0;
+  renderImgLightbox();
+}
+function renderImgLightbox() {
+  const ex = document.getElementById("imgLightbox"); if (ex) ex.remove();
+  const img = _lbImgs[_lbIdx];
+  if (!img) return;
+  let h = `<div id="imgLightbox" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;animation:fadeOverlay .2s ease-out" onclick="closeImgLightbox()">`;
+  h += `<div style="position:relative;max-width:90vw;max-height:80vh" onclick="event.stopPropagation()">`;
+  h += `<img src="${esc(img)}" style="max-width:90vw;max-height:80vh;border-radius:12px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)">`;
+  // Navigation arrows
+  if (_lbImgs.length > 1) {
+    h += `<button onclick="lbNav(-1)" style="position:absolute;left:-40px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;font-size:24px;width:36px;height:36px;border-radius:50%;cursor:pointer;backdrop-filter:blur(4px)">‹</button>`;
+    h += `<button onclick="lbNav(1)" style="position:absolute;right:-40px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;font-size:24px;width:36px;height:36px;border-radius:50%;cursor:pointer;backdrop-filter:blur(4px)">›</button>`;
+  }
+  h += `</div>`;
+  // Counter + close
+  h += `<div style="margin-top:12px;display:flex;align-items:center;gap:12px">`;
+  if (_lbImgs.length > 1) h += `<span style="color:rgba(255,255,255,.6);font-size:13px;font-weight:600">${_lbIdx+1} / ${_lbImgs.length}</span>`;
+  h += `<button onclick="closeImgLightbox()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;backdrop-filter:blur(4px)">✕ ${LANG==="vi"?"Đóng":"Schließen"}</button>`;
+  h += `</div></div>`;
+  document.body.insertAdjacentHTML("beforeend", h);
+}
+function lbNav(dir) {
+  _lbIdx = (_lbIdx + dir + _lbImgs.length) % _lbImgs.length;
+  renderImgLightbox();
+}
+function closeImgLightbox() {
+  const el = document.getElementById("imgLightbox"); if (el) el.remove();
 }
 
 // ═══ STANDORTE (CRUD + Vergleich) ═══
