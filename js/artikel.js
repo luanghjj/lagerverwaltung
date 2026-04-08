@@ -63,7 +63,7 @@ function renderArtikel(vS, aS) {
 
   // ═══ BANNER: Admin/Manager warning for unassigned articles ═══
   if (_unassignedCount > 0) {
-    h += `<div style="background:var(--yA);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>⚠️</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--yl)">${_unassignedCount} ${LANG==="vi"?"sản phẩm chưa thuộc khu vực nào":"Artikel keinem Bereich zugewiesen"}</div><div style="font-size:10.5px;color:var(--t3)">${LANG==="vi"?"Staff sẽ không thấy các SP này":"Staff kann diese Artikel nicht sehen"}</div></div></div>`;
+    h += `<div style="background:var(--yA);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:opacity .1s" onclick="showUnassignedModal()" onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='1'"><span>⚠️</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--yl)">${_unassignedCount} ${LANG==="vi"?"sản phẩm chưa thuộc khu vực nào":"Artikel keinem Bereich zugewiesen"}</div><div style="font-size:10.5px;color:var(--t3)">${LANG==="vi"?"Bấm để gán nhanh vào khu vực":"Klicken zum schnellen Zuweisen"}</div></div><span style="font-size:14px;color:var(--yl)">→</span></div>`;
   }
 
   h += `<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"><div class="srch" style="flex:1;min-width:150px;position:relative"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" placeholder="${t("c.search")}" id="artSearch" value="${esc(ART_SEARCH)}" oninput="artSearchInput(this)" style="padding-right:${ART_SEARCH?'28px':'9px'}">${ART_SEARCH?`<button class="bi" onclick="artSearchClear()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3)">✕</button>`:""}</div></div>`;
@@ -420,11 +420,168 @@ function renderArtikelByLief(fil, stC, aS) {
 function togglePriceCompare(id) {
   const inl = document.getElementById(id);
   const row = document.getElementById(id + "_row");
-  // Toggle row version
   if (row) {
     const vis = row.style.display !== "none";
     row.style.display = vis ? "none" : "";
   }
+}
+
+// ═══ UNASSIGNED ARTICLES MODAL ═══
+function showUnassignedModal() {
+  const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s=>U.standorte.includes(s.id));
+  const sids = vS.map(s=>s.id);
+  const allBrIds = getAllBereicheArtikelIds(sids);
+  const unassigned = D.artikel.filter(a => (a.status||"active")==="active" && !allBrIds.has(a.id));
+  const bereiche = D.bereiche.filter(br => sids.includes(br.standortId));
+  // Group bereiche by standort
+  const brByStandort = {};
+  bereiche.forEach(br => {
+    const stName = D.standorte.find(s=>s.id===br.standortId)?.name || "?";
+    if (!brByStandort[stName]) brByStandort[stName] = [];
+    brByStandort[stName].push(br);
+  });
+
+  let h = `<div class="mo-ov" onclick="closeModal()"><div class="mo mo-xl" onclick="event.stopPropagation()">`;
+  h += `<div class="mo-h"><div class="mo-ti">⚠️ ${unassigned.length} ${LANG==="vi"?"sản phẩm chưa có khu vực":"Artikel ohne Bereich"}</div><button class="bi" onclick="closeModal()">✕</button></div>`;
+  h += `<div class="mo-b">`;
+
+  // Bulk assign bar
+  h += `<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">`;
+  h += `<div class="srch" style="flex:1;min-width:120px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" id="uaSearch" placeholder="${t("c.search")}" oninput="uaFilterList()" style="padding-left:28px"></div>`;
+  h += `<select class="sel" id="uaBulkBereich" style="flex:1;max-width:240px">`;
+  h += `<option value="">${LANG==="vi"?"— Chọn khu vực —":"— Bereich wählen —"}</option>`;
+  Object.entries(brByStandort).forEach(([stName, brs]) => {
+    h += `<optgroup label="📍 ${esc(stName)}">`;
+    brs.forEach(br => { h += `<option value="${br.id}">${br.icon} ${esc(br.name)}</option>`; });
+    h += `</optgroup>`;
+  });
+  h += `</select>`;
+  h += `<button class="btn btn-p btn-sm" onclick="uaBulkAssign()">${LANG==="vi"?"Gán đã chọn":"Zuweisen"}</button>`;
+  h += `</div>`;
+
+  // Select all checkbox
+  h += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:4px 8px;background:var(--b3);border-radius:6px">`;
+  h += `<input type="checkbox" id="uaSelectAll" onchange="uaToggleAll(this.checked)" style="width:16px;height:16px;cursor:pointer">`;
+  h += `<label for="uaSelectAll" style="font-size:12px;font-weight:600;color:var(--t2);cursor:pointer">${LANG==="vi"?"Chọn tất cả":"Alle auswählen"}</label>`;
+  h += `<span style="margin-left:auto;font-size:11px;color:var(--t3)" id="uaSelectedCount">0 ${LANG==="vi"?"đã chọn":"ausgewählt"}</span>`;
+  h += `</div>`;
+
+  // Article list
+  h += `<div id="uaList" style="max-height:55vh;overflow-y:auto">`;
+  unassigned.forEach((a, i) => {
+    const kats = a.kategorien.map(kId => D.kategorien.find(k=>k.id===kId)).filter(Boolean);
+    h += `<div class="ua-row" data-name="${norm(artN(a))} ${norm(a.name_vi||"")} ${norm(a.name||"")}" data-id="${a.id}" style="padding:8px;border-bottom:1px solid var(--bd)">`;
+    // Top: checkbox + image + name
+    h += `<div style="display:flex;align-items:center;gap:8px">`;
+    h += `<input type="checkbox" class="ua-cb" data-artid="${a.id}" onchange="uaUpdateCount()" style="width:16px;height:16px;cursor:pointer;flex-shrink:0">`;
+    h += `<div class="th" style="width:36px;height:36px;flex-shrink:0">${a.bilder?.length?`<img src="${esc(a.bilder[0])}" style="width:100%;height:100%;object-fit:cover">`:""}</div>`;
+    h += `<div style="flex:1;min-width:0">`;
+    h += `<div style="font-weight:600;font-size:13px">${esc(artN(a))}</div>`;
+    h += `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">`;
+    kats.forEach(k => { h += `<span class="kt" style="background:${k.farbe}22;color:${k.farbe}">${esc(katN(k))}</span>`; });
+    h += `<span style="font-size:10px;color:var(--t3);font-family:var(--m)">${esc(a.sku)}</span>`;
+    h += `</div></div>`;
+    // Assign button
+    h += `<button class="btn btn-o btn-sm ua-assign-btn" data-artid="${a.id}" onclick="uaToggleBrPicker('${a.id}')" style="flex-shrink:0;font-size:11px">${LANG==="vi"?"Chọn KV ▾":"Bereich ▾"}</button>`;
+    h += `</div>`;
+    // Bereich multi-checkbox picker (hidden by default)
+    h += `<div id="ua_brpick_${a.id}" style="display:none;margin:6px 0 0 28px;padding:6px 8px;background:var(--b3);border-radius:6px">`;
+    Object.entries(brByStandort).forEach(([stName, brs]) => {
+      h += `<div style="font-size:10px;font-weight:700;color:var(--t3);margin:4px 0 2px;text-transform:uppercase">📍 ${esc(stName)}</div>`;
+      brs.forEach(br => {
+        h += `<label style="display:flex;align-items:center;gap:5px;padding:3px 0;cursor:pointer;font-size:12px">`;
+        h += `<input type="checkbox" class="ua-br-cb" data-artid="${a.id}" data-brid="${br.id}" style="width:14px;height:14px;cursor:pointer">`;
+        h += `<span>${br.icon} ${esc(br.name)}</span></label>`;
+      });
+    });
+    h += `<button class="btn btn-p btn-sm" onclick="uaAssignSelected('${a.id}')" style="margin-top:4px;font-size:11px">${LANG==="vi"?"✓ Gán":"✓ Zuweisen"}</button>`;
+    h += `</div>`;
+    h += `</div>`;
+  });
+  if (!unassigned.length) {
+    h += `<div style="text-align:center;padding:24px;color:var(--gn);font-weight:600">✓ ${LANG==="vi"?"Tất cả SP đã có khu vực":"Alle Artikel sind zugewiesen"}</div>`;
+  }
+  h += `</div>`;
+  h += `</div></div></div>`;
+  document.body.insertAdjacentHTML("beforeend", h);
+}
+
+function uaToggleBrPicker(artId) {
+  const el = document.getElementById("ua_brpick_" + artId);
+  if (el) el.style.display = el.style.display === "none" ? "" : "none";
+}
+
+function uaFilterList() {
+  const q = norm(document.getElementById("uaSearch")?.value || "");
+  document.querySelectorAll(".ua-row").forEach(row => {
+    row.style.display = !q || (row.dataset.name||"").includes(q) ? "" : "none";
+  });
+}
+
+function uaToggleAll(checked) {
+  document.querySelectorAll(".ua-cb").forEach(cb => { if (cb.closest(".ua-row").style.display !== "none") cb.checked = checked; });
+  uaUpdateCount();
+}
+
+function uaUpdateCount() {
+  const n = document.querySelectorAll(".ua-cb:checked").length;
+  const el = document.getElementById("uaSelectedCount");
+  if (el) el.textContent = `${n} ${LANG==="vi"?"đã chọn":"ausgewählt"}`;
+}
+
+function uaAssignSelected(artId) {
+  const cbs = document.querySelectorAll(`.ua-br-cb[data-artid="${artId}"]:checked`);
+  if (!cbs.length) { toast(LANG==="vi"?"Chọn ít nhất 1 khu vực":"Mindestens 1 Bereich!", "e"); return; }
+  const names = [];
+  const changedBereiche = [];
+  cbs.forEach(cb => {
+    const brId = cb.dataset.brid;
+    const br = D.bereiche.find(x => x.id === brId);
+    if (!br) return;
+    if (!br.artikel) br.artikel = [];
+    if (!br.artikel.some(ba => ba.artikelId === artId)) {
+      br.artikel.push({ artikelId: artId, soll: 1, quelleId: br.standortId });
+      changedBereiche.push(br);
+      names.push(`${br.icon}${br.name}`);
+    }
+  });
+  save();
+  changedBereiche.forEach(br => {
+    if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e));
+  });
+  const row = document.querySelector(`.ua-row[data-id="${artId}"]`);
+  if (row) {
+    row.style.transition = "opacity .3s, transform .3s";
+    row.style.opacity = "0"; row.style.transform = "translateX(20px)";
+    setTimeout(() => row.remove(), 300);
+  }
+  const a = D.artikel.find(x => x.id === artId);
+  toast(`✓ ${artN(a)} → ${names.join(", ")}`, "s");
+}
+
+function uaBulkAssign() {
+  const brId = document.getElementById("uaBulkBereich")?.value;
+  if (!brId) { toast(LANG==="vi"?"Chọn khu vực trước":"Bereich wählen!", "e"); return; }
+  const br = D.bereiche.find(x => x.id === brId);
+  if (!br) return;
+  if (!br.artikel) br.artikel = [];
+  const checked = document.querySelectorAll(".ua-cb:checked");
+  if (!checked.length) { toast(LANG==="vi"?"Chọn sản phẩm trước":"Artikel auswählen!", "e"); return; }
+  let count = 0;
+  checked.forEach(cb => {
+    const artId = cb.dataset.artid;
+    if (!br.artikel.some(ba => ba.artikelId === artId)) {
+      br.artikel.push({ artikelId: artId, soll: 1, quelleId: br.standortId });
+      count++;
+    }
+    const row = cb.closest(".ua-row");
+    if (row) { row.style.transition = "opacity .3s"; row.style.opacity = "0"; setTimeout(() => row.remove(), 300); }
+  });
+  save();
+  if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e));
+  toast(`✓ ${count} → ${br.icon} ${br.name}`, "s");
+  document.getElementById("uaSelectAll") && (document.getElementById("uaSelectAll").checked = false);
+  uaUpdateCount();
 }
 
 // ═══ WARENEINGANG / AUSGANG ═══
