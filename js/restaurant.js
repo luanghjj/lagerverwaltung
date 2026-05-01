@@ -130,13 +130,12 @@ function renderAnfModal() {
   h += renderAnfTable(items, brId);
   h += `</div>`;
 
-  // Add article to this Bereich
-  if (unassigned.length) {
-    h += `<div style="display:flex;gap:5px;align-items:center;margin-top:8px">`;
-    h += `<select class="sel" id="anf_add_art" style="flex:1"><option value="">— ${LANG==="vi"?"Thêm SP":"Artikel hinzufügen"} —</option>${unassigned.map(a=>`<option value="${a.id}">${esc(artN(a))} (${esc(a.einheit)})</option>`).join("")}</select>`;
-    h += `<button class="btn btn-o btn-sm" onclick="anfAddItem()">+ ${LANG==="vi"?"Thêm":"Hinzufügen"}</button>`;
-    h += `</div>`;
-  }
+  // Add article to this Bereich — searchable
+  h += `<div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:8px">`;
+  h += `<div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:4px;text-transform:uppercase">${LANG==="vi"?"➕ Thêm SP vào khu vực":"➕ Artikel zum Bereich hinzufügen"}</div>`;
+  h += `<div class="srch" style="position:relative"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" id="anfAddSearch" placeholder="${LANG==="vi"?"Tìm sản phẩm để thêm...":"Artikel suchen zum Hinzufügen..."}" oninput="anfSearchAdd(this.value)" style="padding-left:28px"></div>`;
+  h += `<div id="anfAddResults" style="max-height:180px;overflow-y:auto;margin-top:4px"></div>`;
+  h += `</div>`;
 
   // Auto-Bestellliste warning
   if (emptyCount > 0) {
@@ -246,25 +245,64 @@ function anfFilterList(q) {
   });
 }
 
-function anfAddItem() {
-  const sel = document.getElementById("anf_add_art");
-  const artId = sel?.value;
+function anfSearchAdd(q) {
+  if (_IME) return;
+  const ql = norm(q);
+  const wrap = document.getElementById("anfAddResults");
+  if (!wrap) return;
+  if (!ql || ql.length < 1) { wrap.innerHTML = ""; return; }
+
+  const items = window._anfItems || [];
+  const assigned = new Set(items.map(it => it.artikelId));
+  const matches = D.artikel.filter(a =>
+    !assigned.has(a.id) &&
+    (a.status || "active") === "active" &&
+    (norm(a.name || "").includes(ql) || norm(a.name_vi || "").includes(ql) || norm(a.sku || "").includes(ql))
+  ).slice(0, 8);
+
+  if (!matches.length) {
+    wrap.innerHTML = `<div style="padding:8px;text-align:center;color:var(--t3);font-size:12px">${LANG==="vi"?"Không tìm thấy":"Nichts gefunden"}</div>`;
+    return;
+  }
+
+  const br = D.bereiche.find(x => x.id === window._anfBrId);
+  let h = "";
+  matches.forEach(a => {
+    const kats = a.kategorien.map(kId => D.kategorien.find(k=>k.id===kId)).filter(Boolean);
+    const lagerIst = a.istBestand[br?.standortId] || 0;
+    h += `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--b4)'" onmouseleave="this.style.background=''" onclick="anfAddItemById('${a.id}')">`;
+    h += `<div class="th" style="width:30px;height:30px;flex-shrink:0">${a.bilder?.length?`<img src="${esc(a.bilder[0])}" style="width:100%;height:100%;object-fit:cover">`:""}</div>`;
+    h += `<div style="flex:1;min-width:0">`;
+    h += `<div style="font-weight:600;font-size:12px">${esc(artN(a))}</div>`;
+    h += `<div style="display:flex;gap:3px;flex-wrap:wrap">`;
+    kats.forEach(k => { h += `<span class="kt" style="background:${k.farbe}22;color:${k.farbe};font-size:9px">${esc(katN(k))}</span>`; });
+    h += `</div></div>`;
+    h += `<div style="text-align:right;flex-shrink:0"><span style="font-size:11px;font-family:var(--m);color:${lagerIst>0?"var(--gn)":"var(--rd)"};font-weight:600">${lagerIst} ${esc(a.einheit)}</span></div>`;
+    h += `<button class="btn btn-p btn-sm" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();anfAddItemById('${a.id}')">+</button>`;
+    h += `</div>`;
+  });
+  wrap.innerHTML = h;
+}
+
+function anfAddItemById(artId) {
   if (!artId) return;
-  const a = D.artikel.find(x=>x.id===artId);
+  const a = D.artikel.find(x => x.id === artId);
   if (!a) return;
-  const br = D.bereiche.find(x=>x.id===window._anfBrId);
-  const lagerIst = a.istBestand[br?.standortId]||0;
+  const br = D.bereiche.find(x => x.id === window._anfBrId);
+  const qId = br?.standortId || "";
+  const lagerIst = a.istBestand[qId] || 0;
 
   // Add to Bereich permanently
-  br.artikel.push({ artikelId: artId, soll: 1 });
+  br.artikel.push({ artikelId: artId, soll: 1, quelleId: qId });
   save();
+  if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e));
 
   // Add to modal items
-  window._anfItems.push({ artikelId: artId, art: a, soll: 1, lagerIst, verbrauch: 0 });
+  window._anfItems.push({ artikelId: artId, art: a, soll: 1, lagerIst, quelleId: qId, quelleName: "", isExtern: false, verbrauch: 0 });
 
   // Re-render modal
   renderAnfModal();
-  toast(`${artN(a)} → ${br?.icon} ${LANG==="vi"&&br?.name_vi?br.name_vi:br?.name} +`,"s");
+  toast(`${artN(a)} → ${br?.icon} ${LANG==="vi"&&br?.name_vi?br.name_vi:br?.name} +`, "s");
 }
 
 function anfRemItem(idx) {
