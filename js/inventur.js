@@ -26,18 +26,22 @@ function renderInventur(vS, aS) {
   }
   h += `</div></div><div class="mn-c">`;
 
-  if (!INV_ACTIVE && INV_DONE.length) {
-    // Show history
+  const prots = D.inventurProtokolle || [];
+  if (!INV_ACTIVE && prots.length) {
+    // Show history (from D.inventurProtokolle → survives reload / realtime)
     h += `<h3 style="font-size:13px;font-weight:700;margin-bottom:8px">${LANG==="vi"?"Lịch sử kiểm kê":"Inventur-Protokolle"}</h3>`;
-    INV_DONE.forEach((inv,idx) => {
-      const diffCount = inv.items.filter(x=>x.diff!==0).length;
-      h += `<div class="cd" style="margin-bottom:8px;cursor:pointer;border-left:3px solid ${diffCount?"var(--yl)":"var(--gn)"}" onclick="showInvDetail(${idx})">`;
-      h += `<div style="display:flex;justify-content:space-between"><div><div style="font-weight:700">${fDT(inv.datum)}</div><div style="font-size:11px;color:var(--t2)">${esc(inv.standort)} · ${esc(inv.benutzer)}</div></div>`;
-      h += `<div style="text-align:right"><span class="bp" style="background:${diffCount?"var(--yA)":"var(--gA)"};color:${diffCount?"var(--yl)":"var(--gn)"}">${diffCount?`${diffCount} ${LANG==="vi"?"chênh lệch":"Differenzen"}`:`✓ ${LANG==="vi"?"Khớp":"Keine Differenz"}`}</span><div style="font-size:10px;color:var(--t3);margin-top:2px">${inv.items.length} ${t("c.article")}</div></div></div></div>`;
+    prots.forEach(prot => {
+      const items = prot.items || [];
+      const diffCount = items.filter(x=>x.diff!==0).length;
+      const stName2 = D.standorte.find(s=>s.id===prot.standortId)?.name || "";
+      const uName = D.users.find(u=>u.id===prot.benutzer)?.name || prot.benutzer || "";
+      h += `<div class="cd" style="margin-bottom:8px;cursor:pointer;border-left:3px solid ${diffCount?"var(--yl)":"var(--gn)"}" onclick="showInvDetail('${prot.id}')">`;
+      h += `<div style="display:flex;justify-content:space-between"><div><div style="font-weight:700">${fDT(prot.datum)}</div><div style="font-size:11px;color:var(--t2)">${esc(stName2)} · ${esc(uName)}</div></div>`;
+      h += `<div style="text-align:right"><span class="bp" style="background:${diffCount?"var(--yA)":"var(--gA)"};color:${diffCount?"var(--yl)":"var(--gn)"}">${diffCount?`${diffCount} ${LANG==="vi"?"chênh lệch":"Differenzen"}`:`✓ ${LANG==="vi"?"Khớp":"Keine Differenz"}`}</span><div style="font-size:10px;color:var(--t3);margin-top:2px">${items.length} ${t("c.article")}</div></div></div></div>`;
     });
   }
 
-  if (!INV_ACTIVE && !INV_DONE.length) {
+  if (!INV_ACTIVE && !prots.length) {
     h += `<div style="text-align:center;padding:30px;color:var(--t3)"><div style="font-size:40px;margin-bottom:8px">📋</div>`;
     h += `<div style="font-size:14px;font-weight:600">${LANG==="vi"?"Kiểm kê kho":"Stichtagsinventur"}</div>`;
     h += `<div style="font-size:12px;margin-top:6px;max-width:400px;margin-inline:auto">${LANG==="vi"?"Đếm từng sản phẩm, so sánh với số liệu hệ thống, tự động điều chỉnh chênh lệch.":"Artikel für Artikel zählen, mit System-Bestand vergleichen, Differenzen automatisch korrigieren."}</div></div>`;
@@ -190,43 +194,66 @@ function finishInventur() {
     : `Inventur abschließen?\n\n${counted} Artikel gezählt, ${diffs.length} Differenzen.\n\nDifferenzen werden automatisch korrigiert.`;
 
   cConfirm(label, () => {
-    const invItems = [];
+    const protId = uid();
+    const invItems = [];   // loader-shaped items for D.inventurProtokolle
+    const _newBews = [];
+    const diffLog = [];    // for Telegram summary
     Object.entries(INV_DATA).forEach(([artId, v]) => {
       const a = D.artikel.find(x=>x.id===artId);
       if (!a) return;
       const sysIst = a.istBestand[stId] || 0;
-      invItems.push({ artId, name: artN(a), sku: a.sku, sysIst, gezählt: v.gezählt, diff: v.diff });
+      invItems.push({ artikelId: artId, gezaehlt: v.gezählt, system: sysIst, diff: v.diff });
 
       if (v.diff !== 0) {
         // Correct stock
         a.istBestand[stId] = v.gezählt;
+        diffLog.push({ name: artN(a), sysIst, gezählt: v.gezählt, diff: v.diff });
         // Log correction
-        D.bewegungen.unshift({
+        const bew = {
           id: uid(), typ: v.diff > 0 ? "korrektur_plus" : "korrektur_minus",
           artikelId: artId, standortId: stId, menge: Math.abs(v.diff),
           datum: nw(), benutzer: U.id, referenz: "INVENTUR", notiz: `Soll:${sysIst}→Ist:${v.gezählt}`, lieferantId: ""
-        });
+        };
+        D.bewegungen.unshift(bew);
+        _newBews.push(bew);
       }
     });
 
-    // Save protocol
-    INV_DONE.unshift({ datum: nw(), standort: stName, standortId: stId, benutzer: U.name, items: invItems });
+    // Save protocol (shape matches sbLoadAll → survives reload)
+    const prot = { id: protId, standortId: stId, datum: nw(), benutzer: U.id, items: invItems };
+    if (!D.inventurProtokolle) D.inventurProtokolle = [];
+    D.inventurProtokolle.unshift(prot);
     INV_ACTIVE = false; INV_DATA = {};
     save(); render();
-    // Supabase sync: inventur + corrected articles
-    const prot = INV_DONE[0];
-    if (prot && typeof sbSaveInventur === "function") sbSaveInventur({ id: uid(), standortId: prot.standortId, datum: prot.datum, benutzer: U.id }, prot.items.map(it => ({ artikelId: it.artId, gezaehlt: it.gezählt, systemBestand: it.sysIst, diff: it.diff }))).catch(e => console.error("sbInv:", e));
-    invItems.forEach(it => { if (it.diff !== 0) { const a = D.artikel.find(x => x.id === it.artId); if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e)); } });
-    const diffLines = diffs.slice(0,10).map(d => `• ${d.name}: ${d.sysIst}→${d.gezählt} (${d.diff>0?"+":""}${d.diff})`).join("\n");
+    // Supabase sync: inventur + corrected articles + corrections ledger
+    if (typeof sbSaveInventur === "function") sbSaveInventur({ id: prot.id, standortId: prot.standortId, datum: prot.datum, benutzer: prot.benutzer }, prot.items.map(it => ({ artikelId: it.artikelId, gezaehlt: it.gezaehlt, systemBestand: it.system, diff: it.diff }))).catch(e => console.error("sbInv:", e));
+    invItems.forEach(it => { if (it.diff !== 0) { const a = D.artikel.find(x => x.id === it.artikelId); if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e)); } });
+    if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbBew:", e)));
+    const diffLines = diffLog.slice(0,10).map(d => `• ${d.name}: ${d.sysIst}→${d.gezählt} (${d.diff>0?"+":""}${d.diff})`).join("\n");
     sendTG("inventur", `📋 *Inventur abgeschlossen*\n📍 ${stName}\n👤 ${U?.name||"?"}\n${invItems.length} Artikel gezählt\n${diffs.length} Korrekturen\n\n${diffLines}${diffs.length>10?"\n... +"+(diffs.length-10)+" weitere":""}`, stId);
     tgCheckKritisch();
     toast(`✓ ${LANG==="vi"?"Kiểm kê hoàn thành":"Inventur abgeschlossen"} · ${diffs.length} ${LANG==="vi"?"điều chỉnh":"Korrekturen"}`,"s");
   });
 }
 
-function showInvDetail(idx) {
-  const inv = INV_DONE[idx];
-  if (!inv) return;
+// Resolve a stored protokoll (loader shape) into display rows
+function invResolveProt(prot) {
+  const items = (prot.items || []).map(it => {
+    const a = D.artikel.find(x=>x.id===it.artikelId);
+    return { name: a ? artN(a) : (it.artikelId||"?"), sku: a?.sku || "", sysIst: it.system ?? 0, gezählt: it.gezaehlt ?? 0, diff: it.diff ?? 0 };
+  });
+  return {
+    datum: prot.datum,
+    standort: D.standorte.find(s=>s.id===prot.standortId)?.name || "",
+    benutzer: D.users.find(u=>u.id===prot.benutzer)?.name || prot.benutzer || "",
+    items
+  };
+}
+
+function showInvDetail(id) {
+  const prot = (D.inventurProtokolle||[]).find(p=>p.id===id);
+  if (!prot) return;
+  const inv = invResolveProt(prot);
   const diffs = inv.items.filter(x=>x.diff!==0);
 
   let h = `<div class="mo-ov" onclick="closeModal()"><div class="mo mo-w" onclick="event.stopPropagation()"><div class="mo-h"><div class="mo-ti">📋 ${LANG==="vi"?"Biên bản kiểm kê":"Inventur-Protokoll"} — ${fDT(inv.datum)}</div><button class="bi" onclick="closeModal()">✕</button></div><div class="mo-b">`;
@@ -247,14 +274,15 @@ function showInvDetail(idx) {
   }
 
   // Export
-  if (can(U.role,"export")) h += `<div style="margin-top:10px;display:flex;gap:4px"><button class="btn btn-o btn-sm" onclick="exportInvPDF(${idx})">⬇ PDF</button></div>`;
+  if (can(U.role,"export")) h += `<div style="margin-top:10px;display:flex;gap:4px"><button class="btn btn-o btn-sm" onclick="exportInvPDF('${prot.id}')">⬇ PDF</button></div>`;
 
   h += `</div></div></div>`;
   document.body.insertAdjacentHTML("beforeend", h);
 }
 
-function exportInvPDF(idx) {
-  const inv = INV_DONE[idx]; if (!inv) return;
+function exportInvPDF(id) {
+  const prot = (D.inventurProtokolle||[]).find(p=>p.id===id); if (!prot) return;
+  const inv = invResolveProt(prot);
   let html = `<html><head><meta charset="utf-8"><title>Inventur ${inv.datum}</title><style>body{font-family:Helvetica,Arial,sans-serif;font-size:11px;margin:20px}h1{font-size:16px}table{width:100%;border-collapse:collapse}th{background:#f0f0f0;text-align:left;padding:4px 6px;font-size:10px;border-bottom:2px solid #ccc}td{padding:4px 6px;border-bottom:1px solid #eee}.r{text-align:right}.mono{font-family:monospace}.pos{color:#059669;font-weight:bold}.neg{color:#DC2626;font-weight:bold}.zero{color:#999}</style></head><body>`;
   html += `<h1>${esc(D.einstellungen.firmenname)} — Inventur-Protokoll</h1>`;
   html += `<p><b>Datum:</b> ${fDT(inv.datum)} | <b>Standort:</b> ${esc(inv.standort)} | <b>Benutzer:</b> ${esc(inv.benutzer)}</p>`;

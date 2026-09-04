@@ -245,7 +245,7 @@ function setBLUnit(id, unit) {
 
 function setBLMenge(id, val) {
   const it = D.bestellliste.find(x=>x.id===id);
-  if (it) { it.menge = Math.max(1, parseInt(val) || 1); save(); render(); }
+  if (it) { it.menge = Math.max(1, parseInt(val) || 1); save(); render(); if (typeof sbSaveBestelllisteItem === 'function') sbSaveBestelllisteItem(it).catch(e => console.error('sbSaveBL:', e)); }
 }
 
 // ═══ BESTELL-VORLAGEN ═══
@@ -346,8 +346,10 @@ function applyVorlage(idx) {
   let added = 0;
   v.items.forEach(it => {
     const exists = D.bestellliste.find(bl => bl.artikelId === it.artikelId && bl.standortId === stId && bl.lieferantId === (v.lieferantId||""));
-    if (exists) { exists.menge = it.menge; }
-    else { D.bestellliste.push({id:uid(), artikelId: it.artikelId, standortId: stId, menge: it.menge, lieferantId: v.lieferantId||""}); added++; }
+    let item;
+    if (exists) { exists.menge = it.menge; item = exists; }
+    else { item = {id:uid(), artikelId: it.artikelId, standortId: stId, menge: it.menge, lieferantId: v.lieferantId||""}; D.bestellliste.push(item); added++; }
+    if (typeof sbSaveBestelllisteItem === 'function') sbSaveBestelllisteItem(item).catch(e => console.error('sbSaveBL:', e));
   });
   BL_VIEW = "lief";
   save(); render();
@@ -733,8 +735,10 @@ function blQuickAddAll(liefId) {
     const qty = parseInt(inp.value) || 0;
     if (qty <= 0) return;
     const exists = D.bestellliste.find(bl=>bl.artikelId===artId&&bl.standortId===stId&&bl.lieferantId===liefId);
-    if (exists) { exists.menge += qty; }
-    else { D.bestellliste.push({id:uid(),artikelId:artId,standortId:stId,menge:qty,lieferantId:liefId}); }
+    let item;
+    if (exists) { exists.menge += qty; item = exists; }
+    else { item = {id:uid(),artikelId:artId,standortId:stId,menge:qty,lieferantId:liefId}; D.bestellliste.push(item); }
+    if (typeof sbSaveBestelllisteItem === 'function') sbSaveBestelllisteItem(item).catch(e => console.error('sbSaveBL:', e));
     added++;
   });
   if (!added) { toast(LANG==="vi"?"Chưa nhập số lượng":"Keine Mengen eingegeben","e"); return; }

@@ -165,14 +165,17 @@ async function sbLoadAll() {
     result.transfers = transfers.map(t => ({
       id: t.id, vonId: t.von_id, nachId: t.nach_id,
       datum: t.datum || t.created_at, benutzer: t.benutzer || "",
-      status: t.status || "unterwegs", items: tfItemsByTf[t.id] || []
+      status: t.status || "unterwegs", items: tfItemsByTf[t.id] || [],
+      empfangenDetails: t.empfangen_details || null,
+      empfangenVon: t.empfangen_von || "",
+      empfangenAm: t.empfangen_am || ""
     }));
 
     // ── Bereiche (join with bereich_artikel) ──
     const baByBereich = {};
     bereichArtikel.forEach(ba => {
       if (!baByBereich[ba.bereich_id]) baByBereich[ba.bereich_id] = [];
-      baByBereich[ba.bereich_id].push({ artikelId: ba.artikel_id, soll: ba.soll || 1 });
+      baByBereich[ba.bereich_id].push({ artikelId: ba.artikel_id, soll: ba.soll || 1, quelleId: ba.quelle_id || "" });
     });
     result.bereiche = bereiche.map(b => ({
       id: b.id, name: b.name, name_vi: b.name_vi || "",
@@ -236,7 +239,8 @@ async function sbLoadAll() {
     // ── Preis Historie ──
     result.preisHistorie = preisHistorie.map(p => ({
       id: p.id, artikelId: p.artikel_id, lieferantId: p.lieferant_id,
-      alt: parseFloat(p.alt) || 0, neu: parseFloat(p.neu) || 0, datum: p.datum
+      alt: parseFloat(p.alter_preis) || 0, neu: parseFloat(p.neuer_preis) || 0,
+      datum: p.datum, benutzer: p.benutzer || ""
     }));
 
     // ── Einstellungen ──
@@ -283,7 +287,9 @@ async function sbSaveArtikel(a) {
     id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "",
     barcodes: a.barcodes || [], bilder: a.bilder || [],
     beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "",
-    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0
+    einheit: a.einheit || "Stk.", pack_unit: a.packUnit || "", pack_size: a.packSize || 0,
+    status: a.status || "active", created_by: a.createdBy || null,
+    rejected_reason: a.rejectedReason || null
   });
   if (artErr) {
     console.error("[sbSaveArtikel] artikel upsert:", artErr.message);
@@ -356,12 +362,13 @@ async function sbSaveBewegung(b) {
   });
 }
 
-// Save bestellung (DB has: id, artikel_id, lieferant_id, standort_id, menge, status, datum, erstellt_von)
+// Save bestellung (DB has: id, artikel_id, lieferant_id, standort_id, menge, status, datum, erstellt_von, empfangen, fehlmenge, notiz)
 async function sbSaveBestellung(b) {
   await sb.from("bestellungen").upsert({
     id: b.id, artikel_id: b.artikelId, lieferant_id: b.lieferantId,
     standort_id: b.standortId, menge: b.menge, status: b.status,
-    datum: b.datum, erstellt_von: b.erstelltVon || null
+    datum: b.datum, erstellt_von: b.erstelltVon || null,
+    empfangen: (b.empfangen ?? null), fehlmenge: (b.fehlmenge ?? null)
   });
 }
 
@@ -369,12 +376,25 @@ async function sbSaveBestellung(b) {
 async function sbSaveTransfer(t) {
   await sb.from("transfers").upsert({
     id: t.id, von_id: t.vonId, nach_id: t.nachId, datum: t.datum,
-    benutzer: t.benutzer || null, status: t.status
+    benutzer: t.benutzer || null, status: t.status,
+    empfangen_details: t.empfangenDetails || null,
+    empfangen_von: t.empfangenVon || null,
+    empfangen_am: t.empfangenAm || null
   });
   await sb.from("transfer_items").delete().eq("transfer_id", t.id);
   if (t.items?.length) {
+    // Merge per-item empfangen/diff from empfangenDetails (matched by artId)
+    const detByArt = {};
+    (t.empfangenDetails || []).forEach(d => { detByArt[d.artId] = d; });
     await sb.from("transfer_items").insert(
-      t.items.map(i => ({ id: uid(), transfer_id: t.id, artikel_id: i.artId, menge: i.menge, empfangen: i.empfangen, diff: i.diff }))
+      t.items.map(i => {
+        const det = detByArt[i.artId];
+        return {
+          id: uid(), transfer_id: t.id, artikel_id: i.artId, menge: i.menge,
+          empfangen: (i.empfangen ?? det?.empfangen ?? null),
+          diff: (i.diff ?? det?.diff ?? null)
+        };
+      })
     );
   }
 }
@@ -420,7 +440,7 @@ async function sbSaveBereich(br) {
       return true;
     });
     const { error: baErr } = await sb.from("bereich_artikel").insert(
-      unique.map(ba => ({ bereich_id: br.id, artikel_id: ba.artikelId, soll: ba.soll || 1 }))
+      unique.map(ba => ({ bereich_id: br.id, artikel_id: ba.artikelId, soll: ba.soll || 1, quelle_id: ba.quelleId || null }))
     );
     if (baErr) console.warn("[sbSaveBereich] bereich_artikel:", baErr.message);
   }
@@ -571,6 +591,16 @@ async function sbSaveAuffuellung(auf) {
     id: auf.id, bereich_id: auf.bereichId || null, artikel_id: auf.artikelId,
     menge: auf.menge, datum: auf.datum, benutzer: auf.benutzer || null,
     anforderung_id: auf.anforderungId || null
+  }, { onConflict: "id" });
+}
+
+// Save preis-historie entry (DB: id, artikel_id, lieferant_id, alter_preis, neuer_preis, datum, benutzer)
+async function sbSavePreisHistorie(p) {
+  if (!p) return;
+  await sb.from("preis_historie").upsert({
+    id: p.id, artikel_id: p.artikelId, lieferant_id: p.lieferantId,
+    alter_preis: p.alt || 0, neuer_preis: p.neu || 0,
+    datum: p.datum, benutzer: p.benutzer || null
   }, { onConflict: "id" });
 }
 

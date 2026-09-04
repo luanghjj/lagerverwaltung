@@ -431,8 +431,10 @@ function dashQuickOrder(artId, stId) {
   const qty = Math.max(1, soll - ist);
   const bestL = a.lieferanten.length ? a.lieferanten.reduce((b,l)=>l.preis<b.preis?l:b, a.lieferanten[0]) : null;
   const exists = D.bestellliste.find(bl=>bl.artikelId===artId&&bl.standortId===stId);
-  if (exists) { exists.menge += qty; }
-  else { D.bestellliste.push({id:uid(), artikelId:artId, standortId:stId, menge:qty, lieferantId:bestL?.lieferantId||""}); }
+  let item;
+  if (exists) { exists.menge += qty; item = exists; }
+  else { item = {id:uid(), artikelId:artId, standortId:stId, menge:qty, lieferantId:bestL?.lieferantId||""}; D.bestellliste.push(item); }
   save(); render();
+  if (typeof sbSaveBestelllisteItem === 'function') sbSaveBestelllisteItem(item).catch(e => console.error('sbSaveBL:', e));
   toast(`${artN(a)} ×${qty} → ${t("nav.orderlist")}`,"s");
 }

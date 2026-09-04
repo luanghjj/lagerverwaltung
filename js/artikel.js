@@ -594,3 +594,44 @@ function getGrundOptions() {
   const all = [...new Set([...defaults, ...used])];
   return all;
 }
+
+// ═══ APPROVAL WORKFLOW (#2) ═══
+function approveArtikel(id) {
+  const a = D.artikel.find(x => x.id === id);
+  if (!a) return;
+  a.status = "active";
+  a.rejectedReason = "";
+  save(); render();
+  if (typeof sbApproveArtikel === "function") sbApproveArtikel(id).catch(e => console.error("sbApprove:", e));
+  toast(`✓ ${t("art.approve")}`, "s");
+}
+
+function rejectArtikel(id) {
+  const a = D.artikel.find(x => x.id === id);
+  if (!a) return;
+  let h = `<div class="mo-ov" id="rejOv" style="z-index:300"><div class="mo" style="max-width:400px" onclick="event.stopPropagation()"><div class="mo-b" style="padding:20px">`;
+  h += `<div style="font-size:14px;font-weight:600;margin-bottom:10px">${t("art.reject")}: ${esc(artN(a))}</div>`;
+  h += `<textarea id="rejReason" class="in" rows="3" placeholder="${t("art.rejectreason")}" style="width:100%;margin-bottom:12px"></textarea>`;
+  h += `<div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn btn-o" onclick="document.getElementById('rejOv').remove()">${t("c.cancel")}</button><button class="btn btn-d" id="rejConfirm">${t("art.reject")}</button></div>`;
+  h += `</div></div></div>`;
+  document.body.insertAdjacentHTML("beforeend", h);
+  document.getElementById("rejConfirm").onclick = () => {
+    const reason = document.getElementById("rejReason").value.trim();
+    document.getElementById("rejOv")?.remove();
+    a.status = "rejected";
+    a.rejectedReason = reason;
+    save(); render();
+    if (typeof sbRejectArtikel === "function") sbRejectArtikel(id, reason).catch(e => console.error("sbReject:", e));
+    toast(`✓ ${t("art.reject")}`, "s");
+  };
+}
+
+function resubmitArtikel(id) {
+  const a = D.artikel.find(x => x.id === id);
+  if (!a) return;
+  a.status = "pending";
+  a.rejectedReason = "";
+  save(); render();
+  if (typeof sbResubmitArtikel === "function") sbResubmitArtikel(id).catch(e => console.error("sbResubmit:", e));
+  toast(`✓ ${t("art.sentforreview")}`, "s");
+}

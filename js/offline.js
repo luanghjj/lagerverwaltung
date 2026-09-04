@@ -53,7 +53,8 @@ const SB_FUNCTIONS = [
   'sbSaveUser', 'sbSaveBereich', 'sbSaveLieferant', 'sbSaveKategorie',
   'sbSaveStandort', 'sbSaveLagerplatz', 'sbSaveBestelllisteItem',
   'sbSaveEinstellungen', 'sbSaveInventur', 'sbSaveAnforderung',
-  'sbSaveAuffuellung', 'sbDeleteUser', 'sbDeleteBereich',
+  'sbSaveAuffuellung', 'sbSavePreisHistorie', 'sbApproveArtikel', 'sbRejectArtikel',
+  'sbResubmitArtikel', 'sbDeleteUser', 'sbDeleteBereich',
   'sbDeleteLieferant', 'sbDeleteKategorie', 'sbDeleteLagerplatz',
   'sbDeleteBestelllisteItem', 'sbDeleteAnforderung', 'sbClearBestellliste'
 ];

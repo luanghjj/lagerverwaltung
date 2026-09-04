@@ -125,9 +125,11 @@ function addToBestellliste(artId, stId) {
   const liefSel = $(`#addlief_${stId}`);
   const liefId = liefSel ? liefSel.value : (a?.lieferanten.length ? a.lieferanten.reduce((b,l)=>l.preis<b.preis?l:b, a.lieferanten[0]).lieferantId : "");
   const ex = D.bestellliste.find(x=>x.artikelId===artId && x.standortId===stId && x.lieferantId===liefId);
-  if (ex) ex.menge += qty;
-  else D.bestellliste.push({id:uid(),artikelId:artId,standortId:stId,menge:qty,lieferantId:liefId});
+  let item;
+  if (ex) { ex.menge += qty; item = ex; }
+  else { item = {id:uid(),artikelId:artId,standortId:stId,menge:qty,lieferantId:liefId}; D.bestellliste.push(item); }
   save();
+  if (typeof sbSaveBestelllisteItem === 'function') sbSaveBestelllisteItem(item).catch(e => console.error('sbSaveBL:', e));
   const liefName = D.lieferanten.find(l=>l.id===liefId)?.name || "";
   toast(`${qty}× → ${t("nav.orderlist")}${liefName?" · "+liefName:""}`,"s");
 }
@@ -510,6 +512,10 @@ function aeSave(id, isEdit) {
         if (!f.lagerort[s.id]) f.lagerort[s.id] = "";
       });
     }
+    // Approval workflow: staff-created articles start pending; admin/manager auto-active
+    f.status = (U.role === "admin" || U.role === "manager") ? "active" : "pending";
+    f.createdBy = U.id;
+    f.rejectedReason = "";
     D.artikel.push(f);
   }
   // Update Bereiche membership (Admin/Manager only)
@@ -585,9 +591,11 @@ function quickBook(artId, stId, typ, menge) {
   if (!isE && ist < menge) { toast(LANG==="vi"?"Không đủ hàng":"Kein Bestand","e"); return; }
   if (isE) a.istBestand[stId] = ist + menge;
   else a.istBestand[stId] = Math.max(0, ist - menge);
-  D.bewegungen.unshift({ id:uid(), typ, artikelId:artId, standortId:stId, menge, datum:nw(), benutzer:U.id, referenz:"QUICK", notiz:"", lieferantId:"" });
+  const _qbBew = { id:uid(), typ, artikelId:artId, standortId:stId, menge, datum:nw(), benutzer:U.id, referenz:"QUICK", notiz:"", lieferantId:"" };
+  D.bewegungen.unshift(_qbBew);
   save();
   if (typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e=>console.error("sbArt:",e));
+  if (typeof sbSaveBewegung === "function") sbSaveBewegung(_qbBew).catch(e=>console.error("sbBew:",e));
   // Re-open detail to show updated stock
   closeModal();
   showArtikelDetail(artId);

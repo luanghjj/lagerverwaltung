@@ -178,10 +178,15 @@ function updateLiefPreis(liefId, artId, val) {
     const newPreis = parseFloat(val) || 0;
     if (oldPreis !== newPreis) {
       if (!D.preisHistorie) D.preisHistorie = [];
-      D.preisHistorie.unshift({ artikelId: artId, lieferantId: liefId, alt: oldPreis, neu: newPreis, datum: nw(), benutzer: U.id });
+      const ph = { id: uid(), artikelId: artId, lieferantId: liefId, alt: oldPreis, neu: newPreis, datum: nw(), benutzer: U.id };
+      D.preisHistorie.unshift(ph);
+      al.preis = newPreis; save();
+      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+      if (typeof sbSavePreisHistorie === "function") sbSavePreisHistorie(ph).catch(e => console.error("sbPreisH:", e));
+    } else {
+      al.preis = newPreis; save();
+      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
     }
-    al.preis = newPreis; save();
-    if (typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
   }
 }
 

@@ -345,7 +345,7 @@ function createAnforderung(brId) {
 
   // Add to Bestellliste
   if (bestellItems.length) {
-    bestellItems.forEach(bi => D.bestellliste.push(bi));
+    bestellItems.forEach(bi => { D.bestellliste.push(bi); if (typeof sbSaveBestelllisteItem === "function") sbSaveBestelllisteItem(bi).catch(e => console.error("sbSaveBL:", e)); });
     toast(`🛒 ${bestellItems.length} → ${t("nav.orderlist")}`, "i");
   }
 
@@ -353,6 +353,7 @@ function createAnforderung(brId) {
   const anf = { id: uid(), bereichId: brId, standortId: br.standortId, items, status: "offen", datum: nw(), erstelltVon: U.id };
   D.anforderungen.unshift(anf);
   save(); closeModal();
+  if (typeof sbSaveAnforderung === "function") sbSaveAnforderung(anf).catch(e => console.error("sbAnf:", e));
   showVerbrauchBon(anf);
 }
 
@@ -700,11 +701,14 @@ function confirmAnforderung(anfId) {
 
   cConfirm(label, () => {
     let count = 0;
+    const _newAufBews = [];
     fillData.forEach(d => {
       if (d.fillQty <= 0 || !d.art) return;
       const qId = d.quelleId;
       d.art.istBestand[qId] = Math.max(0, d.lagerIst - d.fillQty);
-      D.bewegungen.unshift({ id: uid(), typ: "ausgang", artikelId: d.artikelId, standortId: qId, menge: d.fillQty, datum: nw(), benutzer: U.id, referenz: `RST-${br?.icon||""}${br?.name||""}`, notiz: `${LANG==="vi"?"Bổ sung":"Auffüllung"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}${d.fillQty<d.angefordert?` (${d.fillQty}/${d.angefordert})`:""}${qId!==anf.standortId?" ← "+esc(D.standorte.find(s=>s.id===qId)?.name||""):""}`, lieferantId: "" });
+      const bew = { id: uid(), typ: "ausgang", artikelId: d.artikelId, standortId: qId, menge: d.fillQty, datum: nw(), benutzer: U.id, referenz: `RST-${br?.icon||""}${br?.name||""}`, notiz: `${LANG==="vi"?"Bổ sung":"Auffüllung"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}${d.fillQty<d.angefordert?` (${d.fillQty}/${d.angefordert})`:""}${qId!==anf.standortId?" ← "+esc(D.standorte.find(s=>s.id===qId)?.name||""):""}`, lieferantId: "" };
+      D.bewegungen.unshift(bew);
+      _newAufBews.push(bew);
       D.auffuellungen.unshift({ id: uid(), bereichId: anf.bereichId, artikelId: d.artikelId, menge: d.fillQty, datum: nw(), benutzer: U.id, anforderungId: anfId, quelleId: qId });
       count++;
     });
@@ -712,6 +716,7 @@ function confirmAnforderung(anfId) {
     save(); render();
     // Supabase sync
     if (typeof sbSaveAnforderung === "function") sbSaveAnforderung(anf).catch(e => console.error("sbAnf:", e));
+    if (typeof sbSaveBewegung === "function") _newAufBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbBew:", e)));
     fillData.forEach(d => { if (d.fillQty > 0) { const af = D.auffuellungen.find(x => x.artikelId === d.artikelId && x.anforderungId === anfId); if (af && typeof sbSaveAuffuellung === "function") sbSaveAuffuellung(af).catch(e => console.error("sbAuf:", e)); if (d.art && typeof sbSaveArtikel === "function") sbSaveArtikel(d.art).catch(e => console.error("sbArt:", e)); } });
     toast(`✓ ${count} ${t("c.article")} ${LANG==="vi"?"đã xuất kho":"abgebucht"} (${totalFill} ${LANG==="vi"?"đơn vị":"Einh."})`, "s");
   });
@@ -735,14 +740,17 @@ function undoAuffuellung(afId) {
     ? `Hoàn tác: +${af.menge} ${artN(a)} trả lại kho?`
     : `Rückgängig: +${af.menge} ${artN(a)} zurück ins Lager?`;
   cConfirm(label, () => {
+    let _undoBew = null;
     if (a) {
       const stId = br?.standortId || D.standorte[0]?.id || "";
       a.istBestand[stId] = (a.istBestand[stId]||0) + af.menge;
-      D.bewegungen.unshift({ id: uid(), typ: "eingang", artikelId: af.artikelId, standortId: stId, menge: af.menge, datum: nw(), benutzer: U.id, referenz: `UNDO-RST`, notiz: `${LANG==="vi"?"Hoàn tác bổ sung":"Auffüllung rückgängig"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}`, lieferantId: "" });
+      _undoBew = { id: uid(), typ: "eingang", artikelId: af.artikelId, standortId: stId, menge: af.menge, datum: nw(), benutzer: U.id, referenz: `UNDO-RST`, notiz: `${LANG==="vi"?"Hoàn tác bổ sung":"Auffüllung rückgängig"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}`, lieferantId: "" };
+      D.bewegungen.unshift(_undoBew);
     }
     D.auffuellungen = D.auffuellungen.filter(x=>x.id!==afId);
     save(); render();
     if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+    if (_undoBew && typeof sbSaveBewegung === "function") sbSaveBewegung(_undoBew).catch(e => console.error("sbBew:", e));
     if (typeof sb !== "undefined") sb.from("auffuellungen").delete().eq("id", afId).then(({ error }) => { if (error) console.error("sbDelAuf:", error.message); });
     toast(`↩ ${af.menge}× ${artN(a)} ${LANG==="vi"?"đã hoàn tác":"rückgängig"}`, "s");
   });

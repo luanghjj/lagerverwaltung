@@ -344,6 +344,7 @@ function confirmTransfer(tfId, itemCount) {
   }
 
   cConfirm(label, () => {
+    const _newBews = [];
     empfangen.forEach(e => {
       const a = D.artikel.find(x=>x.id===e.artId);
       if (!a) return;
@@ -351,14 +352,18 @@ function confirmTransfer(tfId, itemCount) {
       // Book received qty at target
       if (e.empfangen > 0) {
         a.istBestand[tf.nachId] = (a.istBestand[tf.nachId]||0) + e.empfangen;
-        D.bewegungen.unshift({ id:uid(), typ:"eingang", artikelId:e.artId, standortId:tf.nachId, menge:e.empfangen, datum:nw(), benutzer:U.id, referenz:`UB←${von?.name}`, notiz:`Transfer ${von?.name}→${nach?.name}`, lieferantId:"" });
+        const bew = { id:uid(), typ:"eingang", artikelId:e.artId, standortId:tf.nachId, menge:e.empfangen, datum:nw(), benutzer:U.id, referenz:`UB←${von?.name}`, notiz:`Transfer ${von?.name}→${nach?.name}`, lieferantId:"" };
+        D.bewegungen.unshift(bew);
+        _newBews.push(bew);
       }
 
       // Return shortage to source
       if (e.diff < 0) {
         const fehlMenge = Math.abs(e.diff);
         a.istBestand[tf.vonId] = (a.istBestand[tf.vonId]||0) + fehlMenge;
-        D.bewegungen.unshift({ id:uid(), typ:"korrektur_plus", artikelId:e.artId, standortId:tf.vonId, menge:fehlMenge, datum:nw(), benutzer:U.id, referenz:`UB↩ Fehl`, notiz:`Fehlmenge Transfer→${nach?.name}: ${e.gesendet} gesendet, ${e.empfangen} empfangen`, lieferantId:"" });
+        const bew = { id:uid(), typ:"korrektur_plus", artikelId:e.artId, standortId:tf.vonId, menge:fehlMenge, datum:nw(), benutzer:U.id, referenz:`UB↩ Fehl`, notiz:`Fehlmenge Transfer→${nach?.name}: ${e.gesendet} gesendet, ${e.empfangen} empfangen`, lieferantId:"" };
+        D.bewegungen.unshift(bew);
+        _newBews.push(bew);
       }
     });
 
@@ -366,8 +371,11 @@ function confirmTransfer(tfId, itemCount) {
     tf.empfangenVon = U.id;
     tf.empfangenAm = nw();
     tf.empfangenDetails = empfangen;
+    // Mirror per-item received/diff onto tf.items so transfer_items persist them
+    tf.items.forEach(it => { const det = empfangen.find(e => e.artId === it.artId); if (det) { it.empfangen = det.empfangen; it.diff = det.diff; } });
     save(); render();
     if (typeof sbSaveTransfer === "function") sbSaveTransfer(tf).catch(e => console.error("sbSaveTransfer:", e));
+    if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbSaveBewegung:", e)));
     if (typeof sbSaveArtikel === "function") empfangen.forEach(e => { const a = D.artikel.find(x => x.id === e.artId); if (a) sbSaveArtikel(a).catch(e2 => console.error("sbSaveArtikel:", e2)); });
 
     const fehlCount = empfangen.filter(e=>e.diff<0).length;
@@ -390,16 +398,23 @@ function rejectTransfer(tfId) {
     : `Gesamten Transfer zurückweisen?\nAlle ${tf.items.length} Artikel werden an ${von?.name} zurückgebucht.`;
 
   cConfirm(label, () => {
+    const _newBews = [];
     tf.items.forEach(it => {
       const a = D.artikel.find(x=>x.id===it.artId);
       if (!a) return;
       a.istBestand[tf.vonId] = (a.istBestand[tf.vonId]||0) + it.menge;
-      D.bewegungen.unshift({ id:uid(), typ:"korrektur_plus", artikelId:it.artId, standortId:tf.vonId, menge:it.menge, datum:nw(), benutzer:U.id, referenz:"UB↩", notiz:`Transfer komplett zurückgewiesen`, lieferantId:"" });
+      const bew = { id:uid(), typ:"korrektur_plus", artikelId:it.artId, standortId:tf.vonId, menge:it.menge, datum:nw(), benutzer:U.id, referenz:"UB↩", notiz:`Transfer komplett zurückgewiesen`, lieferantId:"" };
+      D.bewegungen.unshift(bew);
+      _newBews.push(bew);
     });
     tf.status = "zurück";
+    tf.empfangenVon = U.id;
+    tf.empfangenAm = nw();
     tf.empfangenDetails = tf.items.map(it=>({artId:it.artId,gesendet:it.menge,empfangen:0,diff:-it.menge}));
+    tf.items.forEach(it => { it.empfangen = 0; it.diff = -it.menge; });
     save(); render();
     if (typeof sbSaveTransfer === "function") sbSaveTransfer(tf).catch(e => console.error("sbSaveTransfer:", e));
+    if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbSaveBewegung:", e)));
     if (typeof sbSaveArtikel === "function") tf.items.forEach(it => { const a = D.artikel.find(x => x.id === it.artId); if (a) sbSaveArtikel(a).catch(e => console.error("sbSaveArtikel:", e)); });
     const nach = D.standorte.find(s=>s.id===tf.nachId);
     sendTG("transfer", `↩ *Transfer zurückgewiesen*\n📤 ${von?.name} → 📥 ${nach?.name}\n👤 ${U?.name||"?"}\n${tf.items.length} Artikel zurückgebucht`);
