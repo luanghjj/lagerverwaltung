@@ -319,8 +319,10 @@ function createVorlageFromList() {
     const lief = D.lieferanten.find(l=>l.id===liefId);
     const items = groups[liefKeys[0]].map(bl => ({artikelId: bl.artikelId, menge: bl.menge}));
     const name = lief ? lief.name : (LANG==="vi"?"Mẫu mới":"Neue Vorlage");
-    D.bestellVorlagen.push({id:uid(), name, lieferantId: liefId, items});
+    const nv = {id:uid(), name, lieferantId: liefId, items};
+    D.bestellVorlagen.push(nv);
     save(); render();
+    if (typeof sbSaveVorlage === 'function') sbSaveVorlage(nv).catch(e => console.error('sbSaveVorlage:', e));
     toast(`⭐ ${LANG==="vi"?"Đã lưu mẫu":"Vorlage gespeichert"}: ${name}`,"s");
   } else {
     // Multiple suppliers: create one template per supplier
@@ -328,7 +330,9 @@ function createVorlageFromList() {
       const liefId = key === "none" ? "" : key;
       const lief = D.lieferanten.find(l=>l.id===liefId);
       const items = groups[key].map(bl => ({artikelId: bl.artikelId, menge: bl.menge}));
-      D.bestellVorlagen.push({id:uid(), name: lief?.name || "Sonstige", lieferantId: liefId, items});
+      const nv = {id:uid(), name: lief?.name || "Sonstige", lieferantId: liefId, items};
+      D.bestellVorlagen.push(nv);
+      if (typeof sbSaveVorlage === 'function') sbSaveVorlage(nv).catch(e => console.error('sbSaveVorlage:', e));
     });
     save(); render();
     toast(`⭐ ${liefKeys.length} ${LANG==="vi"?"mẫu đã tạo":"Vorlagen erstellt"}`,"s");
@@ -433,14 +437,17 @@ function saveVorlage() {
   if (idx < 0) D.bestellVorlagen.push(v);
   else D.bestellVorlagen[idx] = v;
   save(); closeModal(); render();
+  if (typeof sbSaveVorlage === 'function') sbSaveVorlage(v).catch(e => console.error('sbSaveVorlage:', e));
   toast(`⭐ ${v.name} ✓`,"s");
 }
 
 function deleteVorlage(idx) {
   const v = D.bestellVorlagen[idx];
   cConfirm(`${LANG==="vi"?"Xóa mẫu":"Vorlage löschen"} "${v?.name}"?`, () => {
+    const vid = v?.id;
     D.bestellVorlagen.splice(idx, 1);
     save(); render(); toast("✓","i");
+    if (vid && typeof sbDeleteVorlage === 'function') sbDeleteVorlage(vid).catch(e => console.error('sbDeleteVorlage:', e));
   });
 }
 

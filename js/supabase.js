@@ -546,6 +546,25 @@ async function sbDeleteAnforderung(id) {
   await sb.from("anforderungen").delete().eq("id", id);
 }
 
+// Save bestell-vorlage + items
+async function sbSaveVorlage(v) {
+  await sb.from("bestell_vorlagen").upsert({
+    id: v.id, name: v.name, lieferant_id: v.lieferantId || null
+  }, { onConflict: "id" });
+  await sb.from("vorlage_items").delete().eq("vorlage_id", v.id);
+  if (v.items?.length) {
+    await sb.from("vorlage_items").insert(
+      v.items.map(it => ({ id: uid(), vorlage_id: v.id, artikel_id: it.artikelId, menge: it.menge }))
+    );
+  }
+}
+
+// Delete bestell-vorlage
+async function sbDeleteVorlage(id) {
+  await sb.from("vorlage_items").delete().eq("vorlage_id", id);
+  await sb.from("bestell_vorlagen").delete().eq("id", id);
+}
+
 // Save auffuellung
 async function sbSaveAuffuellung(auf) {
   await sb.from("auffuellungen").upsert({

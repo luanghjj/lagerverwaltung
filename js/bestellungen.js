@@ -235,6 +235,13 @@ function bestConfirmOne(id) {
       b.fehlmenge = Math.abs(diff);
     }
     save(); render();
+    // Supabase sync: order status + stock + movement (empfangen/fehlmenge bleiben lokal — keine DB-Spalte)
+    if (typeof sbSaveBestellung === "function") sbSaveBestellung(b).catch(e => console.error("sbBest:", e));
+    if (a && empfangen > 0) {
+      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+      const bew = D.bewegungen.find(x => x.typ === "eingang" && x.artikelId === b.artikelId && x.referenz === `B-${b.id}`);
+      if (bew && typeof sbSaveBewegung === "function") sbSaveBewegung(bew).catch(e => console.error("sbBew:", e));
+    }
     toast(diff<0?`⚠ ${artN(a)}: ${empfangen}/${b.menge} (${diff})`:`✓ ${artN(a)}: ${empfangen} ${a?.einheit||""}`, diff<0?"i":"s");
   });
 }
@@ -274,6 +281,15 @@ function bestConfirmAll(liefKey) {
     });
     sendTG("eingang", `📦 *${LANG==="vi"?"Lieferung":"Wareneingang"}: ${lief?.name||"?"}*\n${count} Pos. ${LANG==="vi"?"đã nhận":"empfangen"}${fehlCount?`\n⚠ ${fehlCount} Fehlmengen`:""}\n\n${data.map(d=>`• ${d.empfangen}/${d.b.menge} ${artN(d.a)}${d.diff<0?" ⚠":""}`).join("\n")}`);
     save(); render();
+    // Supabase sync: order status + stock + movements
+    data.forEach(d => {
+      if (typeof sbSaveBestellung === "function") sbSaveBestellung(d.b).catch(e => console.error("sbBest:", e));
+      if (d.a && d.empfangen > 0) {
+        if (typeof sbSaveArtikel === "function") sbSaveArtikel(d.a).catch(e => console.error("sbArt:", e));
+        const bew = D.bewegungen.find(x => x.typ === "eingang" && x.artikelId === d.b.artikelId && x.referenz === `B-${d.b.id}`);
+        if (bew && typeof sbSaveBewegung === "function") sbSaveBewegung(bew).catch(e => console.error("sbBew:", e));
+      }
+    });
     toast(`✓ ${count} ${t("c.article")} ${LANG==="vi"?"đã nhận":"empfangen"}${fehlCount?` · ${fehlCount} ${LANG==="vi"?"thiếu":"Fehl"}`:""}`, fehlCount?"i":"s");
   });
 }
@@ -284,7 +300,7 @@ function bestStatus(id, st) {
   const a = D.artikel.find(x=>x.id===b.artikelId);
   if (st === "storniert") {
     const label = LANG==="vi" ? `Hủy đơn hàng ${artN(a)}?` : `Bestellung ${artN(a)} stornieren?`;
-    cConfirm(label, () => { b.status = st; save(); render(); toast("✓","i"); });
+    cConfirm(label, () => { b.status = st; save(); render(); toast("✓","i"); if (typeof sbSaveBestellung === "function") sbSaveBestellung(b).catch(e => console.error("sbBest:", e)); });
   }
 }
 
