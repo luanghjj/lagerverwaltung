@@ -244,6 +244,7 @@ function execTransfer() {
   cConfirm(label, () => {
     if (!D.transfers) D.transfers = [];
     const items = [];
+    const _sumLines = [], _sumChanges = [];
     TF_BATCH.forEach(b => {
       const a = D.artikel.find(x=>x.id===b.artId);
       if (!a) return;
@@ -252,6 +253,8 @@ function execTransfer() {
       if (qty <= 0) return;
       // Deduct from source immediately
       a.istBestand[vonId] = vonIst - qty;
+      _sumLines.push({a, menge:qty});
+      _sumChanges.push({a, alt:vonIst, neu:a.istBestand[vonId]});
       D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:b.artId, standortId:vonId, zielStandortId:nachId, menge:qty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"" });
       items.push({ artId: b.artId, menge: qty });
     });
@@ -270,6 +273,7 @@ function execTransfer() {
     if (typeof sbSaveArtikel === "function") items.forEach(it => { const a = D.artikel.find(x => x.id === it.artId); if (a) sbSaveArtikel(a).catch(e => console.error("sbSaveArtikel:", e)); });
     sendTG("transfer", `⇄ *Transfer gesendet*\n📤 ${vonName} → 📥 ${nachName}\n${items.length} Pos.\n👤 ${U?.name||"?"}\n\n${items.map(it=>{const a=D.artikel.find(x=>x.id===it.artId);return `• ${it.menge}× ${artN(a)}`;}).join("\n")}`);
     toast(`📤 ${items.length} ${t("c.article")} → ${nachName} (${LANG==="vi"?"chờ xác nhận":"wartet auf Bestätigung"})`, "s");
+    if (items.length) showBookingSummary(buildBookingText([{title:`${vonName} → ${nachName} ${LANG==="vi"?"Chuyển kho (đã gửi)":"Umbuchung (gesendet)"} – ${bookNowStr()}`, lines:_sumLines, changes:_sumChanges}]));
   });
 }
 
@@ -345,13 +349,17 @@ function confirmTransfer(tfId, itemCount) {
 
   cConfirm(label, () => {
     const _newBews = [];
+    const _sumLines = [], _sumChanges = [], _sumExtra = [];
     empfangen.forEach(e => {
       const a = D.artikel.find(x=>x.id===e.artId);
       if (!a) return;
 
       // Book received qty at target
       if (e.empfangen > 0) {
+        const alt = a.istBestand[tf.nachId]||0;
         a.istBestand[tf.nachId] = (a.istBestand[tf.nachId]||0) + e.empfangen;
+        _sumLines.push({a, menge:e.empfangen});
+        _sumChanges.push({a, alt, neu:a.istBestand[tf.nachId]});
         const bew = { id:uid(), typ:"eingang", artikelId:e.artId, standortId:tf.nachId, menge:e.empfangen, datum:nw(), benutzer:U.id, referenz:`UB←${von?.name}`, notiz:`Transfer ${von?.name}→${nach?.name}`, lieferantId:"" };
         D.bewegungen.unshift(bew);
         _newBews.push(bew);
@@ -361,6 +369,7 @@ function confirmTransfer(tfId, itemCount) {
       if (e.diff < 0) {
         const fehlMenge = Math.abs(e.diff);
         a.istBestand[tf.vonId] = (a.istBestand[tf.vonId]||0) + fehlMenge;
+        _sumExtra.push(`•  ${artN(a)}: ${LANG==="vi"?"thiếu, trả lại":"Fehlmenge zurück an"} ${von?.name||""} +${fmtQtyUnit(fehlMenge, a)}`);
         const bew = { id:uid(), typ:"korrektur_plus", artikelId:e.artId, standortId:tf.vonId, menge:fehlMenge, datum:nw(), benutzer:U.id, referenz:`UB↩ Fehl`, notiz:`Fehlmenge Transfer→${nach?.name}: ${e.gesendet} gesendet, ${e.empfangen} empfangen`, lieferantId:"" };
         D.bewegungen.unshift(bew);
         _newBews.push(bew);
@@ -386,6 +395,7 @@ function confirmTransfer(tfId, itemCount) {
     } else {
       toast(`✓ ${empfangen.length} ${t("c.article")} ${LANG==="vi"?"đã nhận đầy đủ":"vollständig empfangen"}`, "s");
     }
+    showBookingSummary(buildBookingText([{title:`${nach?.name||""} ${LANG==="vi"?`Nhập kho (chuyển từ ${von?.name||""})`:`Wareneingang (Umbuchung von ${von?.name||""})`} – ${bookNowStr()}`, lines:_sumLines, extra:_sumExtra, changes:_sumChanges}]));
   });
 }
 

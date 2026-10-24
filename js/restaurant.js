@@ -702,10 +702,14 @@ function confirmAnforderung(anfId) {
   cConfirm(label, () => {
     let count = 0;
     const _newAufBews = [];
+    const _sumByQ = {}; // gruppiert nach Quell-Lager
     fillData.forEach(d => {
       if (d.fillQty <= 0 || !d.art) return;
       const qId = d.quelleId;
       d.art.istBestand[qId] = Math.max(0, d.lagerIst - d.fillQty);
+      if (!_sumByQ[qId]) _sumByQ[qId] = { lines: [], changes: [] };
+      _sumByQ[qId].lines.push({a:d.art, menge:d.fillQty});
+      _sumByQ[qId].changes.push({a:d.art, alt:d.lagerIst, neu:d.art.istBestand[qId]});
       const bew = { id: uid(), typ: "ausgang", artikelId: d.artikelId, standortId: qId, menge: d.fillQty, datum: nw(), benutzer: U.id, referenz: `RST-${br?.icon||""}${br?.name||""}`, notiz: `${LANG==="vi"?"Bổ sung":"Auffüllung"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}${d.fillQty<d.angefordert?` (${d.fillQty}/${d.angefordert})`:""}${qId!==anf.standortId?" ← "+esc(D.standorte.find(s=>s.id===qId)?.name||""):""}`, lieferantId: "" };
       D.bewegungen.unshift(bew);
       _newAufBews.push(bew);
@@ -719,6 +723,9 @@ function confirmAnforderung(anfId) {
     if (typeof sbSaveBewegung === "function") _newAufBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbBew:", e)));
     fillData.forEach(d => { if (d.fillQty > 0) { const af = D.auffuellungen.find(x => x.artikelId === d.artikelId && x.anforderungId === anfId); if (af && typeof sbSaveAuffuellung === "function") sbSaveAuffuellung(af).catch(e => console.error("sbAuf:", e)); if (d.art && typeof sbSaveArtikel === "function") sbSaveArtikel(d.art).catch(e => console.error("sbArt:", e)); } });
     toast(`✓ ${count} ${t("c.article")} ${LANG==="vi"?"đã xuất kho":"abgebucht"} (${totalFill} ${LANG==="vi"?"đơn vị":"Einh."})`, "s");
+    const _brN = br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):"";
+    const _now = bookNowStr();
+    showBookingSummary(buildBookingText(Object.entries(_sumByQ).map(([qId, g]) => ({ title:`${D.standorte.find(s=>s.id===qId)?.name||""} ${LANG==="vi"?"Xuất kho (Bổ sung":"Warenausgang (Auffüllung"}: ${_brN}) – ${_now}`, lines:g.lines, changes:g.changes }))));
   });
 }
 

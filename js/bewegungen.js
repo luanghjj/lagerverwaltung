@@ -257,12 +257,16 @@ function buchenAlle(typ) {
     if (!isE && b.menge > (a?.istBestand[stId]||0)) return toast(`${artN(a)}: nicht genug!`,"e");
   }
 
+  const _sumLines = [], _sumChanges = [];
   BATCH.forEach(b => {
     D.bewegungen.unshift({id:uid(),typ,artikelId:b.artikelId,standortId:stId,menge:b.menge,datum:nw(),benutzer:U.id,referenz:ref,notiz:b.notiz||grund,lieferantId:lief});
     const a = D.artikel.find(x=>x.id===b.artikelId);
     if (a) {
+      const alt = a.istBestand[stId]||0;
       if (isE) a.istBestand[stId] = (a.istBestand[stId]||0) + b.menge;
       else a.istBestand[stId] = Math.max(0, (a.istBestand[stId]||0) - b.menge);
+      _sumLines.push({a, menge:b.menge});
+      _sumChanges.push({a, alt, neu:a.istBestand[stId]});
     }
   });
   save();
@@ -308,6 +312,8 @@ function buchenAlle(typ) {
   if (typeof logActivity === "function") logActivity(typ, `${BATCH.length} Artikel @ ${stName}${ref?" ("+ref+")":""}`, {count:BATCH.length, standort:stName, ref});
   BATCH = [];
   render();
+  const _typL = isE ? (LANG==="vi"?"Nhập kho":"Wareneingang") : (LANG==="vi"?"Xuất kho":"Warenausgang");
+  showBookingSummary(buildBookingText([{title:`${stName} ${_typL} – ${bookNowStr()}`, lines:_sumLines, changes:_sumChanges}]));
   }); // withLock
 }
 
