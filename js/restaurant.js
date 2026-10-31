@@ -211,7 +211,6 @@ function renderAnfTable(items, brId) {
     h += `<div style="font-weight:600;font-size:15px">${esc(artN(it.art))}</div>`;
     h += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px">`;
     if (lagerort) h += `<span class="loc-tag" style="font-size:10px;padding:1px 5px">📦 ${esc(lagerort)}</span>`;
-    h += `<span style="font-size:11px;color:var(--t3)">${LANG==="vi"?"Chuẩn":"Soll"}: ${it.soll}</span>`;
     h += `<span style="font-size:11px;font-family:var(--m);color:${it.lagerIst>=it.soll?"var(--gn)":it.lagerIst>0?"var(--yl)":"var(--rd)"};font-weight:${isEmpty?"700":"500"}">${LANG==="vi"?"Kho":"Lager"}: ${it.lagerIst}${isEmpty?" ⚠":""}</span>`;
     if (it.isExtern) h += `<span style="font-size:9.5px;padding:1px 5px;background:var(--pA);color:var(--pu);border-radius:3px;font-weight:600">← ${esc(it.quelleName||"")}</span>`;
     if (fehl > 0) h += `<span style="font-size:10px;padding:1px 5px;background:var(--rA);color:var(--rd);border-radius:3px;font-weight:600">−${fehl}</span>`;
@@ -562,14 +561,121 @@ function editBereich(id) {
   h += `<div style="font-size:9px;color:var(--t3);margin-bottom:6px;padding:4px 8px;background:var(--b3);border-radius:4px">💡 ${LANG==="vi"?"\"Nguồn\" = kho nào bị trừ hàng khi bổ sung":"\"Quelle\" = aus welchem Lager wird beim Auffüllen abgebucht"}</div>`;
   h += `<div id="bre_artikel">`;
   const stOpts = D.standorte.filter(s=>s.aktiv).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");
-  (f.artikel||[]).forEach((ba,i) => { h += `<div style="display:flex;gap:5px;align-items:center;margin-bottom:3px" id="bre_art_${i}"><select class="sel" style="flex:2" id="bre_art_id_${i}">${D.artikel.map(a2=>`<option value="${a2.id}" ${ba.artikelId===a2.id?"selected":""}>${esc(artN(a2))} (${esc(a2.einheit)})</option>`).join("")}</select><input class="inp" style="flex:1;max-width:60px" type="number" min="1" id="bre_art_soll_${i}" value="${ba.soll}"><select class="sel" style="flex:1;font-size:10px" id="bre_art_quelle_${i}" title="${LANG==="vi"?"Nguồn":"Quelle"}">${D.standorte.filter(s=>s.aktiv).map(s=>`<option value="${s.id}" ${(ba.quelleId||f.standortId)===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select><button class="bi dn" onclick="document.getElementById('bre_art_${i}').remove()">✕</button></div>`; });
-  h += `</div><button class="btn btn-o btn-sm" onclick="breAddArtikel()">+ ${t("c.article")}</button>`;
+  (f.artikel||[]).forEach((ba,i) => { h += breArtRowHtml(i, ba, f.standortId); });
+  _breArtIdx = (f.artikel||[]).length;
+  h += `</div><button class="btn btn-o btn-sm" onclick="breTogglePicker()">+ ${t("c.article")}</button>`;
+  // Artikel-Picker: Suche + Sortierung (Kategorie / A-Z)
+  h += `<div id="bre_pick" style="display:none;margin-top:6px;padding:8px;border:1px solid var(--bd);border-radius:8px">`;
+  h += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
+  h += `<div class="srch" style="flex:1;min-width:150px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" id="bre_pick_q" placeholder="${LANG==="vi"?"Tìm SP, SKU, danh mục...":"Artikel, SKU, Kategorie suchen..."}" oninput="breRenderPicker()"></div>`;
+  h += `<div class="mode-tabs" style="flex-shrink:0">`;
+  h += `<span class="mode-tab ${BRE_SORT==="kat"?"on":""}" data-sort="kat" onclick="breSetSort('kat')">🏷 ${LANG==="vi"?"Danh mục":"Kategorie"}</span>`;
+  h += `<span class="mode-tab ${BRE_SORT==="name"?"on":""}" data-sort="name" onclick="breSetSort('name')">A-Z</span>`;
+  h += `</div></div>`;
+  h += `<div id="bre_pick_list" style="max-height:45vh;overflow-y:auto"></div>`;
+  h += `</div>`;
   h += `</div><div class="mo-f"><button class="btn btn-o" onclick="closeModal()">${t("c.cancel")}</button><button class="btn btn-p" onclick="saveBereich('${f.id}',${br?'true':'false'})">${t("c.save")}</button></div></div></div>`;
   window._breForm = f;
   document.body.insertAdjacentHTML("beforeend", h);
 }
-let _breArtIdx=100;
-function breAddArtikel() { const i=_breArtIdx++; const c=document.getElementById("bre_artikel"); if(!c)return; const defSt=document.getElementById("bre_standort")?.value||D.standorte[0]?.id||""; c.insertAdjacentHTML("beforeend",`<div style="display:flex;gap:5px;align-items:center;margin-bottom:3px" id="bre_art_${i}"><select class="sel" style="flex:2" id="bre_art_id_${i}">${D.artikel.map(a=>`<option value="${a.id}">${esc(artN(a))} (${esc(a.einheit)})</option>`).join("")}</select><input class="inp" style="flex:1;max-width:60px" type="number" min="1" id="bre_art_soll_${i}" value="1"><select class="sel" style="flex:1;font-size:10px" id="bre_art_quelle_${i}" title="${LANG==="vi"?"Nguồn":"Quelle"}">${D.standorte.filter(s=>s.aktiv).map(s=>`<option value="${s.id}" ${s.id===defSt?"selected":""}>${esc(s.name)}</option>`).join("")}</select><button class="bi dn" onclick="document.getElementById('bre_art_${i}').remove()">✕</button></div>`); }
+let _breArtIdx=0;
+let BRE_SORT = "kat"; // "kat" | "name"
+function breArtRowHtml(i, ba, brStId) {
+  const a = D.artikel.find(x=>x.id===ba.artikelId);
+  const name = a
+    ? `${esc(artN(a))} <span style="color:var(--t3);font-weight:400">(${esc(a.einheit)})</span>`
+    : `<span style="color:var(--rd)">⚠ ${LANG==="vi"?"Không tìm thấy SP":"Artikel nicht gefunden"}</span>`;
+  let h = `<div style="display:flex;gap:5px;align-items:center;margin-bottom:3px" id="bre_art_${i}">`;
+  h += `<input type="hidden" id="bre_art_id_${i}" value="${esc(ba.artikelId)}">`;
+  h += `<div style="flex:2;min-width:0;font-size:15px;font-weight:600;padding:4px 2px">${name}</div>`;
+  h += `<input class="inp" style="flex:1;max-width:60px" type="number" min="1" id="bre_art_soll_${i}" value="${ba.soll}">`;
+  h += `<select class="sel" style="flex:1;font-size:10px" id="bre_art_quelle_${i}" title="${LANG==="vi"?"Nguồn":"Quelle"}">${D.standorte.filter(s=>s.aktiv).map(s=>`<option value="${s.id}" ${(ba.quelleId||brStId)===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`;
+  h += `<button class="bi dn" onclick="breRemArtikel(${i})">✕</button>`;
+  h += `</div>`;
+  return h;
+}
+function breTogglePicker() {
+  const p = document.getElementById("bre_pick");
+  if (!p) return;
+  const open = p.style.display === "none";
+  p.style.display = open ? "" : "none";
+  if (open) { breRenderPicker(); document.getElementById("bre_pick_q")?.focus(); }
+}
+function breSetSort(s) {
+  BRE_SORT = s;
+  document.querySelectorAll("#bre_pick .mode-tab").forEach(el => el.classList.toggle("on", el.dataset.sort === s));
+  breRenderPicker();
+}
+// Noch nicht zugeordnete Artikel — gefiltert (Name, SKU, Kategorie) + sortiert
+function breRenderPicker() {
+  if (_IME) return;
+  const wrap = document.getElementById("bre_pick_list");
+  if (!wrap) return;
+  const ql = norm(document.getElementById("bre_pick_q")?.value || "");
+  const assigned = new Set([...document.querySelectorAll('[id^="bre_art_id_"]')].map(el => el.value));
+  const katById = {};
+  D.kategorien.forEach(k => { katById[k.id] = k; });
+  const rows = [];
+  D.artikel.forEach(a => {
+    if (assigned.has(a.id) || (a.status || "active") !== "active") return;
+    const kats = (a.kategorien||[]).map(id => katById[id]).filter(Boolean);
+    if (ql && !norm(a.name).includes(ql) && !norm(a.name_vi).includes(ql) && !norm(a.sku).includes(ql)
+      && !kats.some(k => norm(k.name).includes(ql) || norm(k.name_vi).includes(ql))) return;
+    rows.push({ a, k: kats[0], kn: kats[0] ? katN(kats[0]) : "" });
+  });
+  const byName = (x, y) => (artN(x.a)||"").localeCompare(artN(y.a)||"", LANG);
+  if (BRE_SORT === "kat") {
+    // Gruppen alphabetisch, "Ohne Kategorie" zuletzt
+    rows.sort((x, y) => x.kn === y.kn ? byName(x, y) : !x.kn ? 1 : !y.kn ? -1 : x.kn.localeCompare(y.kn, LANG));
+  } else {
+    rows.sort(byName);
+  }
+
+  if (!rows.length) {
+    wrap.innerHTML = `<div style="padding:8px;text-align:center;color:var(--t3);font-size:12px">${LANG==="vi"?"Không tìm thấy":"Nichts gefunden"}</div>`;
+    return;
+  }
+  const cnt = {};
+  rows.forEach(r => { cnt[r.kn] = (cnt[r.kn]||0) + 1; });
+  let h = "";
+  let lastKat;
+  rows.forEach(({ a, k, kn }) => {
+    if (BRE_SORT === "kat" && kn !== lastKat) {
+      lastKat = kn;
+      const col = k?.farbe || "var(--t3)";
+      h += `<div style="display:flex;align-items:center;gap:6px;padding:8px 4px 4px">`;
+      h += `<div style="width:4px;height:16px;border-radius:2px;background:${col}"></div>`;
+      h += `<span style="font-size:12px;font-weight:700;color:${col}">${esc(kn || (LANG==="vi"?"Không danh mục":"Ohne Kategorie"))}</span>`;
+      h += `<span style="font-size:11px;color:var(--t3)">(${cnt[kn]})</span>`;
+      h += `<div style="flex:1;height:1px;background:var(--bd)"></div>`;
+      h += `</div>`;
+    }
+    h += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--b4)'" onmouseleave="this.style.background=''" onclick="breAddArtikel('${a.id}')">`;
+    h += `<div class="th" style="width:30px;height:30px">${a.bilder?.length?`<img src="${esc(a.bilder[0])}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`:""}</div>`;
+    h += `<div style="flex:1;min-width:0;font-size:14px;font-weight:600">${esc(artN(a))} <span style="color:var(--t3);font-weight:400">(${esc(a.einheit)})</span>`;
+    if (BRE_SORT === "name" && k) h += ` <span class="kt" style="background:${k.farbe}22;color:${k.farbe};font-size:11px">${esc(kn)}</span>`;
+    h += `</div>`;
+    h += `<button class="btn btn-p btn-sm" style="padding:3px 10px" onclick="event.stopPropagation();breAddArtikel('${a.id}')">+</button>`;
+    h += `</div>`;
+  });
+  wrap.innerHTML = h;
+}
+function breAddArtikel(artId) {
+  const c = document.getElementById("bre_artikel");
+  if (!c || !artId) return;
+  const brStId = document.getElementById("bre_standort")?.value || D.standorte[0]?.id || "";
+  // Picker an gleicher Bildschirmposition halten → mehrere Artikel nacheinander antippen
+  const pick = document.getElementById("bre_pick");
+  const mo = pick?.closest(".mo");
+  const top0 = pick?.getBoundingClientRect().top;
+  c.insertAdjacentHTML("beforeend", breArtRowHtml(_breArtIdx++, { artikelId: artId, soll: 1, quelleId: brStId }, brStId));
+  if (mo && top0 != null) mo.scrollTop += pick.getBoundingClientRect().top - top0;
+  breRenderPicker();
+}
+function breRemArtikel(i) {
+  document.getElementById("bre_art_" + i)?.remove();
+  if (document.getElementById("bre_pick")?.style.display !== "none") breRenderPicker();
+}
 function saveBereich(id,isEdit) {
   const name=document.getElementById("bre_name")?.value||""; if(!name){toast("Name!","e");return;}
   const brStId = document.getElementById("bre_standort")?.value||"";
