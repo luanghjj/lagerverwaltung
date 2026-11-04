@@ -47,7 +47,7 @@ function renderBestellungen(vS, aS) {
     if (BEST_SORT==="datum") v = (a.datum||"").localeCompare(b.datum||"");
     else if (BEST_SORT==="artikel") v = artN(aA).localeCompare(artN(bA));
     else if (BEST_SORT==="standort") v = (D.standorte.find(s=>s.id===a.standortId)?.name||"").localeCompare(D.standorte.find(s=>s.id===b.standortId)?.name||"");
-    else if (BEST_SORT==="lagerort") v = (aA?.lagerort?.[a.standortId]||"").localeCompare(bA?.lagerort?.[b.standortId]||"");
+    else if (BEST_SORT==="lagerort") v = (aA ? locLabel(aA, a.standortId) : "").localeCompare(bA ? locLabel(bA, b.standortId) : "");
     else if (BEST_SORT==="menge") v = a.menge - b.menge;
     else if (BEST_SORT==="wert") { const pA=(aA?.lieferanten.find(x=>x.lieferantId===a.lieferantId)?.preis||0)*a.menge; const pB=(bA?.lieferanten.find(x=>x.lieferantId===b.lieferantId)?.preis||0)*b.menge; v=pA-pB; }
     else if (BEST_SORT==="status") { const so={bestellt:0,geliefert:1,storniert:2}; v=(so[a.status]||9)-(so[b.status]||9); }

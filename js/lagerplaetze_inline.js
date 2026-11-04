@@ -78,7 +78,8 @@ function renderLPModal() {
   });
 
   // Summary: articles with stock but without valid Lagerplatz
-  const unplaced = D.artikel.filter(a => (a.istBestand?.[stId]||0) > 0 && (!a.lagerort?.[stId] || !lpNames.includes(a.lagerort[stId])));
+  // jeder Lagerort mit Bestand zählt (auch der 2., 3. … bei mehreren Lagerorten)
+  const unplaced = D.artikel.filter(a => (a.istBestand?.[stId]||0) > 0 && locRows(a, stId).some(r => r.ist > 0 && (!r.ort || !lpNames.includes(r.ort))));
   if (unplaced.length) {
     h += `<div style="margin-top:12px;padding:8px 10px;background:var(--yA);border:1px solid rgba(245,158,11,.15);border-radius:6px">`;
     h += `<div style="font-weight:700;font-size:11px;color:var(--yl);margin-bottom:4px">⚠ ${unplaced.length} ${LANG==="vi"?"SP chưa xếp vị trí":"Artikel ohne Lagerplatz"}</div>`;
@@ -137,8 +138,11 @@ function assignToLP(lpIdx, stId) {
   if (!artId) return;
   const a = D.artikel.find(x=>x.id===artId);
   if (!a) return;
-  // Erster (bzw. einziger) Lagerort wird auf diesen Platz gesetzt
-  const wasSplit = locRename(a, stId, a.lagerort?.[stId] || "", lp.name);
+  // Ein Lagerort → auf diesen Platz umsetzen. Mehrere Lagerorte → zusätzlicher Lagerort mit Bestand 0
+  // (sonst würde der Bestand des ersten Lagerorts unbemerkt verschoben)
+  let wasSplit;
+  if (locIsSplit(a, stId)) { locStore(a, stId, [...locRows(a, stId), { ort: lp.name, ist: 0, soll: 0 }]); wasSplit = true; }
+  else wasSplit = locRename(a, stId, a.lagerort?.[stId] || "", lp.name);
   lpSyncArt(a, wasSplit);
   renderLPModal();
   // Karte offen lassen, damit man weiter zuweisen kann
@@ -151,7 +155,9 @@ function unassignFromLP(artId, stId, lpIdx) {
   const a = D.artikel.find(x=>x.id===artId);
   if (!a) return;
   const old = lpListFor(stId)[lpIdx]?.name ?? (a.lagerort?.[stId] || "");
-  const wasSplit = locRename(a, stId, old, "");
+  // Mehrere Lagerorte → Bestand in den ersten verbleibenden Lagerort übernehmen (keine Zeile „—“ mit Bestand)
+  const rest = locRows(a, stId).find(r => r.ort !== old);
+  const wasSplit = locRename(a, stId, old, rest ? rest.ort : "");
   lpSyncArt(a, wasSplit);
   const openIdx = lpListFor(stId).findIndex(lp => lp.name === old);
   renderLPModal();
