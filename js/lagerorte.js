@@ -178,3 +178,37 @@ function locDeleteDialog(sid, name, onYes) {
     onYes(moves);
   };
 }
+
+// ═══ QUELLE BEIM AUFFÜLLEN (Bereiche): Standort gesamt oder ein bestimmter Lagerort ═══
+// Gespeichert als quelleId (Standort) + quelleOrt ("" = Standort gesamt). Select-Wert: "sid@@ort".
+const LOC_Q_SEP = "@@";
+function locQuelleOrt(a, sid, ort) { return ort && locHas(a, sid, ort) ? ort : ""; } // Lagerort weg → gesamt
+function locQuelleIst(a, sid, ort) {
+  const o = locQuelleOrt(a, sid, ort);
+  return o ? locRows(a, sid).find(r => r.ort === o).ist : _locNum(a?.istBestand?.[sid]);
+}
+function locQuelleParse(v) { const i = String(v || "").indexOf(LOC_Q_SEP); return i < 0 ? { sid: String(v || ""), ort: "" } : { sid: v.slice(0, i), ort: v.slice(i + LOC_Q_SEP.length) }; }
+function locQuelleSelectHtml(a, sid, ort, id, onchange, style) {
+  const cur = locQuelleOrt(a, sid, ort);
+  const vi = typeof LANG !== "undefined" && LANG === "vi";
+  let h = `<select class="sel" id="${id}" ${onchange ? `onchange="${onchange}"` : ""} onclick="event.stopPropagation()" style="${style || "font-size:10px"}" title="${vi ? "Nguồn" : "Quelle"}">`;
+  D.standorte.filter(s => s.aktiv || s.id === sid).forEach(s => {
+    const rows = a ? locRows(a, s.id).filter(r => r.ort) : [];
+    const o = (v, label) => `<option value="${esc(v)}" ${v === sid + LOC_Q_SEP + cur || (!cur && v === s.id && s.id === sid) ? "selected" : ""}>${label}</option>`;
+    h += `<optgroup label="${esc(s.name)}">` + o(s.id, `🏢 ${esc(s.name)} (${vi ? "tổng" : "gesamt"}${a ? ` ${_locNum(a.istBestand?.[s.id])}` : ""})`)
+      + rows.map(r => o(s.id + LOC_Q_SEP + r.ort, `📦 ${esc(r.ort)} (${r.ist})`)).join("") + `</optgroup>`;
+  });
+  return h + `</select>`;
+}
+// Abbuchen: bestimmter Lagerort → nur dort; sonst Standort gesamt (ab erstem Lagerort, Rest vom nächsten).
+// Rückgabe wie locSetIst (Lagerort-Text für die Bewegung)
+function locTakeFrom(a, sid, qty, ort) {
+  const o = locQuelleOrt(a, sid, ort);
+  if (!o) return locSetIst(a, sid, Math.max(0, _locNum(a.istBestand?.[sid]) - qty));
+  const rows = locRows(a, sid);
+  if (rows.length < 2) { a.istBestand[sid] = Math.max(0, rows[0].ist - qty); return o; }
+  const r = rows.find(x => x.ort === o);
+  r.ist = Math.max(0, r.ist - qty);
+  locStore(a, sid, rows);
+  return o;
+}

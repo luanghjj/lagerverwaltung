@@ -193,7 +193,7 @@ async function sbLoadAll() {
     const baByBereich = {};
     bereichArtikel.forEach(ba => {
       if (!baByBereich[ba.bereich_id]) baByBereich[ba.bereich_id] = [];
-      baByBereich[ba.bereich_id].push({ artikelId: ba.artikel_id, soll: ba.soll || 1, quelleId: ba.quelle_id || "" });
+      baByBereich[ba.bereich_id].push({ artikelId: ba.artikel_id, soll: ba.soll || 1, quelleId: ba.quelle_id || "", quelleOrt: ba.quelle_ort || "" });
     });
     result.bereiche = bereiche.map(b => ({
       id: b.id, name: b.name, name_vi: b.name_vi || "",
@@ -205,7 +205,7 @@ async function sbLoadAll() {
     const anfItemsByAnf = {};
     anforderungItems.forEach(ai => {
       if (!anfItemsByAnf[ai.anforderung_id]) anfItemsByAnf[ai.anforderung_id] = [];
-      anfItemsByAnf[ai.anforderung_id].push({ artikelId: ai.artikel_id, menge: ai.menge || 1 });
+      anfItemsByAnf[ai.anforderung_id].push({ artikelId: ai.artikel_id, menge: ai.menge || 1, quelleId: ai.quelle_id || "", quelleOrt: ai.quelle_ort || "" });
     });
     result.anforderungen = anforderungen.map(a => ({
       id: a.id, bereichId: a.bereich_id, standortId: a.standort_id,
@@ -399,6 +399,7 @@ async function sbResubmitArtikel(id) {
 // Save bewegung
 // Spalte "lagerort" (bewegungen / inventur_items) ist neu. Fehlt sie in der DB noch,
 // wird ohne sie gespeichert – die Buchung geht nie verloren.
+function _sbMissingCol(error, col) { return !!error && (error.message || "").toLowerCase().includes(col) && /column|schema/i.test(error.message || ""); }
 function _sbNoLagerortCol(error) { return !!error && /lagerort/i.test(error.message || "") && /column|schema/i.test(error.message || ""); }
 
 async function sbSaveBewegung(b) {
@@ -493,9 +494,12 @@ async function sbSaveBereich(br) {
       seen.add(ba.artikelId);
       return true;
     });
-    const { error: baErr } = await sb.from("bereich_artikel").insert(
-      unique.map(ba => ({ bereich_id: br.id, artikel_id: ba.artikelId, soll: ba.soll || 1, quelle_id: ba.quelleId || null }))
-    );
+    const rows = unique.map(ba => ({ bereich_id: br.id, artikel_id: ba.artikelId, soll: ba.soll || 1, quelle_id: ba.quelleId || null, quelle_ort: ba.quelleOrt || "" }));
+    let { error: baErr } = await sb.from("bereich_artikel").insert(rows);
+    if (_sbMissingCol(baErr, "quelle_ort")) { // DB ohne Spalte quelle_ort: ohne Lagerort speichern
+      rows.forEach(r => delete r.quelle_ort);
+      ({ error: baErr } = await sb.from("bereich_artikel").insert(rows));
+    }
     if (baErr) console.warn("[sbSaveBereich] bereich_artikel:", baErr.message);
   }
 }
@@ -612,9 +616,14 @@ async function sbSaveAnforderung(anf) {
   }, { onConflict: "id" });
   await sb.from("anforderung_items").delete().eq("anforderung_id", anf.id);
   if (anf.items?.length) {
-    await sb.from("anforderung_items").insert(
-      anf.items.map(it => ({ id: uid(), anforderung_id: anf.id, artikel_id: it.artikelId, menge: it.menge }))
-    );
+    // Quelle mitspeichern, sonst geht sie nach dem Neuladen verloren (→ Standort des Bereichs)
+    const rows = anf.items.map(it => ({ id: uid(), anforderung_id: anf.id, artikel_id: it.artikelId, menge: it.menge, quelle_id: it.quelleId || null, quelle_ort: it.quelleOrt || "" }));
+    let { error } = await sb.from("anforderung_items").insert(rows);
+    if (_sbMissingCol(error, "quelle_")) {
+      rows.forEach(r => { delete r.quelle_id; delete r.quelle_ort; });
+      ({ error } = await sb.from("anforderung_items").insert(rows));
+    }
+    if (error) console.error("[sbSaveAnforderung] items:", error.message);
   }
 }
 

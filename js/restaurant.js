@@ -88,10 +88,11 @@ function openAnforderungModal(brId) {
   window._anfItems = br.artikel.map(ba => {
     const a = D.artikel.find(x=>x.id===ba.artikelId);
     const qId = ba.quelleId || br.standortId;
-    const lagerIst = a?.istBestand[qId]||0;
+    const qOrt = a ? locQuelleOrt(a, qId, ba.quelleOrt) : "";
+    const lagerIst = a ? locQuelleIst(a, qId, qOrt) : 0;
     const quelleName = D.standorte.find(s=>s.id===qId)?.name||"";
     const isExtern = qId !== br.standortId;
-    return { artikelId: ba.artikelId, art: a, soll: ba.soll, lagerIst, quelleId: qId, quelleName, isExtern, verbrauch: 0 };
+    return { artikelId: ba.artikelId, art: a, soll: ba.soll, lagerIst, standIst: a?.istBestand[qId]||0, quelleId: qId, quelleOrt: qOrt, quelleName, isExtern, verbrauch: 0 };
   });
   renderAnfModal();
 }
@@ -111,7 +112,7 @@ function renderAnfModal() {
   const st = D.standorte.find(s=>s.id===br?.standortId);
   const items = window._anfItems;
   const unassigned = D.artikel.filter(a => !items.some(it=>it.artikelId===a.id));
-  const emptyCount = items.filter(it=>it.lagerIst<=0).length;
+  const emptyCount = items.filter(it=>(it.standIst ?? it.lagerIst)<=0).length;
 
   let h = `<div class="mo-ov" id="anfModal" onclick="closeModal()"><div class="mo mo-w" onclick="event.stopPropagation()"><div class="mo-h"><div class="mo-ti">${br?.icon||""} ${LANG==="vi"?"Bổ sung hàng":"Auffüllen"}: ${esc(br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):"")}</div><button class="bi" onclick="closeModal()">✕</button></div><div class="mo-b">`;
   h += `<div style="font-size:11px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--b3);border-radius:6px">📍 ${esc(st?.name||"")} — ${LANG==="vi"?"Nhập số lượng cần bổ sung. Từ đó yêu cầu bổ sung sẽ được tạo.":"Auffüllmenge eingeben. Daraus wird die Anforderung erstellt."}</div>`;
@@ -183,7 +184,7 @@ function renderAnfTable(items, brId) {
   sorted.forEach(it => {
     const i = it._idx;
     const isEmpty = it.lagerIst <= 0;
-    const lagerort = it.art ? locLabel(it.art, it.quelleId||stId) : "";
+    const lagerort = it.quelleOrt || (it.art ? locLabel(it.art, it.quelleId||stId) : "");
     const fehl = Math.max(0, it.soll - it.lagerIst);
 
     // Category header (only in "kat" mode)
@@ -297,7 +298,7 @@ function anfAddItemById(artId) {
   if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e));
 
   // Add to modal items
-  window._anfItems.push({ artikelId: artId, art: a, soll: 1, lagerIst, quelleId: qId, quelleName: "", isExtern: false, verbrauch: 0 });
+  window._anfItems.push({ artikelId: artId, art: a, soll: 1, lagerIst, standIst: lagerIst, quelleId: qId, quelleOrt: "", quelleName: "", isExtern: false, verbrauch: 0 });
 
   // Re-render modal
   renderAnfModal();
@@ -326,9 +327,9 @@ function createAnforderung(brId) {
     const qty = parseInt(el?.value) || 0;
     const it = window._anfItems[i];
     if (qty > 0 && it) {
-      items.push({ artikelId: it.artikelId, menge: qty, quelleId: it.quelleId || br.standortId });
-      // Auto-add to Bestellliste if lager is 0
-      if (it.lagerIst <= 0) {
+      items.push({ artikelId: it.artikelId, menge: qty, quelleId: it.quelleId || br.standortId, quelleOrt: it.quelleOrt || "" });
+      // Auto-add to Bestellliste if lager is 0 (Standort gesamt, auch wenn aus einem Lagerort aufgefüllt wird)
+      if ((it.standIst ?? it.lagerIst) <= 0) {
         const a = it.art;
         const qId = it.quelleId || br.standortId;
         const bestL = a?.lieferanten.length ? a.lieferanten.reduce((b,l)=>l.preis<b.preis?l:b, a.lieferanten[0]) : null;
@@ -589,7 +590,7 @@ function breArtRowHtml(i, ba, brStId) {
   h += `<input type="hidden" id="bre_art_id_${i}" value="${esc(ba.artikelId)}">`;
   h += `<div style="flex:2;min-width:0;font-size:15px;font-weight:600;padding:4px 2px">${name}</div>`;
   h += `<input class="inp" style="flex:1;max-width:60px" type="number" min="1" id="bre_art_soll_${i}" value="${ba.soll}">`;
-  h += `<select class="sel" style="flex:1;font-size:10px" id="bre_art_quelle_${i}" title="${LANG==="vi"?"Nguồn":"Quelle"}">${D.standorte.filter(s=>s.aktiv).map(s=>`<option value="${s.id}" ${(ba.quelleId||brStId)===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`;
+  h += locQuelleSelectHtml(a, ba.quelleId||brStId, ba.quelleOrt||"", `bre_art_quelle_${i}`, "", "flex:1;font-size:10px;min-width:0");
   h += `<button class="bi dn" onclick="breRemArtikel(${i})">✕</button>`;
   h += `</div>`;
   return h;
@@ -680,7 +681,7 @@ function saveBereich(id,isEdit) {
   const name=document.getElementById("bre_name")?.value||""; if(!name){toast("Name!","e");return;}
   const brStId = document.getElementById("bre_standort")?.value||"";
   const f={id,name,name_vi:document.getElementById("bre_name_vi")?.value||"",standortId:brStId,farbe:document.getElementById("bre_farbe")?.value||"#3B82F6",icon:document.getElementById("bre_icon")?.value||"🍽",artikel:[]};
-  document.querySelectorAll('[id^="bre_art_id_"]').forEach(sel=>{const idx=sel.id.replace("bre_art_id_","");const s2=document.getElementById("bre_art_soll_"+idx);const q=document.getElementById("bre_art_quelle_"+idx);if(sel&&s2){const quelleId=q?.value||brStId;f.artikel.push({artikelId:sel.value,soll:Math.max(1,parseInt(s2.value)||1),quelleId});}});
+  document.querySelectorAll('[id^="bre_art_id_"]').forEach(sel=>{const idx=sel.id.replace("bre_art_id_","");const s2=document.getElementById("bre_art_soll_"+idx);const q=document.getElementById("bre_art_quelle_"+idx);if(sel&&s2){const qp=locQuelleParse(q?.value||brStId);f.artikel.push({artikelId:sel.value,soll:Math.max(1,parseInt(s2.value)||1),quelleId:qp.sid||brStId,quelleOrt:qp.ort});}});
   if(isEdit){const i=D.bereiche.findIndex(x=>x.id===id);if(i>=0)D.bereiche[i]=f;}else D.bereiche.push(f);
   save();closeModal();render();toast("✓","s");
   if (typeof sbSaveBereich === "function") sbSaveBereich(f).catch(e => console.error("sbSaveBereich:", e));
@@ -731,15 +732,15 @@ function renderRstAuffuellung(vS, aS) {
       anf.items.forEach((it, itIdx) => {
         const a = D.artikel.find(x=>x.id===it.artikelId);
         const qId = it.quelleId || anf.standortId;
-        const lagerIst = a?.istBestand[qId]||0;
-        const lagerort = a ? locLabel(a, qId) : "";
+        const lagerIst = a ? locQuelleIst(a, qId, it.quelleOrt) : 0;
+        const qSel = a ? locQuelleSelectHtml(a, qId, it.quelleOrt, `anf_q_${anf.id}_${itIdx}`, `anfSetQuelle('${anf.id}',${itIdx},this.value)`, "font-size:10.5px;padding:3px 6px;max-width:220px") : "";
         const isExtern = qId !== anf.standortId;
         const quelleName = isExtern ? (D.standorte.find(s=>s.id===qId)?.name||"") : "";
         const maxFill = Math.min(it.menge, lagerIst);
         const notEnough = lagerIst < it.menge;
         h += `<tr style="border-bottom:1px solid var(--bd);${lagerIst<=0?"background:var(--rA)":""}">`;
         h += `<td style="padding:5px 8px;font-weight:600">${esc(artN(a))}<div style="font-size:9px;color:var(--t3)">${esc(a?.sku||"")}${isExtern?` <span style="color:var(--pu);font-weight:600">← ${esc(quelleName)}</span>`:""}</div></td>`;
-        h += `<td style="padding:5px 8px">${lagerort?`<span class="loc-tag" style="font-size:9px">📦 ${esc(lagerort)}</span>`:`<span style="color:var(--t3);font-size:10px">—</span>`}</td>`;
+        h += `<td style="padding:5px 8px">${qSel||`<span style="color:var(--t3);font-size:10px">—</span>`}</td>`;
         h += `<td style="padding:5px 8px;text-align:right;font-family:var(--m);color:${lagerIst>=it.menge?"var(--gn)":lagerIst>0?"var(--yl)":"var(--rd)"};font-weight:${lagerIst<=0?"700":"400"}">${lagerIst} ${esc(a?.einheit||"")}${lagerIst<=0?" ⚠":""}</td>`;
         h += `<td style="padding:5px 8px;text-align:center;font-family:var(--m);font-size:13px">${it.menge} ${esc(a?.einheit||"")}</td>`;
         h += `<td style="padding:5px 8px;text-align:center"><div style="display:flex;align-items:center;justify-content:center;gap:3px"><input class="inp" type="number" min="0" max="${lagerIst}" value="${maxFill}" id="anf_fill_${anf.id}_${itIdx}" style="width:60px;text-align:center;padding:4px;font-family:var(--m);font-size:14px;font-weight:700;border:2px solid ${notEnough?"var(--yl)":"var(--ac)"}"><span style="font-size:10px;color:var(--t3)">${esc(a?.einheit||"")}</span></div>${notEnough?`<div style="font-size:8.5px;color:var(--rd);margin-top:1px">max ${lagerIst}</div>`:""}</td>`;
@@ -791,8 +792,8 @@ function confirmAnforderung(anfId) {
     const qty = Math.max(0, parseInt(inp?.value) || 0);
     const a = D.artikel.find(x=>x.id===it.artikelId);
     const qId = it.quelleId || anf.standortId;
-    const lagerIst = a?.istBestand[qId]||0;
-    return { ...it, fillQty: Math.min(qty, lagerIst), art: a, lagerIst, angefordert: it.menge, quelleId: qId };
+    const lagerIst = a ? locQuelleIst(a, qId, it.quelleOrt) : 0;
+    return { ...it, fillQty: Math.min(qty, lagerIst), art: a, lagerIst, standIst: a?.istBestand[qId]||0, angefordert: it.menge, quelleId: qId };
   });
   const totalFill = fillData.reduce((s,d)=>s+d.fillQty, 0);
   const skipped = fillData.filter(d=>d.fillQty===0 && d.angefordert>0);
@@ -812,10 +813,11 @@ function confirmAnforderung(anfId) {
     fillData.forEach(d => {
       if (d.fillQty <= 0 || !d.art) return;
       const qId = d.quelleId;
-      const _lo = locSetIst(d.art, qId, Math.max(0, d.lagerIst - d.fillQty));
+      // Lagerort gewählt → nur dort abbuchen; sonst Standort gesamt
+      const _lo = locTakeFrom(d.art, qId, d.fillQty, d.quelleOrt);
       if (!_sumByQ[qId]) _sumByQ[qId] = { lines: [], changes: [] };
       _sumByQ[qId].lines.push({a:d.art, menge:d.fillQty});
-      _sumByQ[qId].changes.push({a:d.art, alt:d.lagerIst, neu:d.art.istBestand[qId]});
+      _sumByQ[qId].changes.push({a:d.art, alt:d.standIst, neu:d.art.istBestand[qId]});
       const bew = { lagerort: _lo, id: uid(), typ: "ausgang", artikelId: d.artikelId, standortId: qId, menge: d.fillQty, datum: nw(), benutzer: U.id, referenz: `RST-${br?.icon||""}${br?.name||""}`, notiz: `${LANG==="vi"?"Bổ sung":"Auffüllung"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}${d.fillQty<d.angefordert?` (${d.fillQty}/${d.angefordert})`:""}${qId!==anf.standortId?" ← "+esc(D.standorte.find(s=>s.id===qId)?.name||""):""}`, lieferantId: "" };
       D.bewegungen.unshift(bew);
       _newAufBews.push(bew);
@@ -833,6 +835,19 @@ function confirmAnforderung(anfId) {
     const _now = bookNowStr();
     showBookingSummary(buildBookingText(Object.entries(_sumByQ).map(([qId, g]) => ({ title:`${D.standorte.find(s=>s.id===qId)?.name||""} ${LANG==="vi"?"Xuất kho (Bổ sung":"Warenausgang (Auffüllung"}: ${_brN}) – ${_now}`, lines:g.lines, changes:g.changes }))));
   });
+}
+
+function anfSetQuelle(anfId, idx, val) {
+  const anf = D.anforderungen.find(x=>x.id===anfId);
+  const it = anf?.items?.[idx];
+  if (!it) return;
+  const q = locQuelleParse(val);
+  it.quelleId = q.sid || anf.standortId; it.quelleOrt = q.ort;
+  const kept = {};
+  document.querySelectorAll(`[id^="anf_fill_${anfId}_"]`).forEach(inp => { const i = +inp.id.split("_").pop(); if (i !== idx) kept[i] = inp.value; });
+  save(); render();
+  Object.entries(kept).forEach(([i, v]) => { const inp = document.getElementById(`anf_fill_${anfId}_${i}`); if (inp) inp.value = v; });
+  if (typeof sbSaveAnforderung === "function") sbSaveAnforderung(anf).catch(e => console.error("sbAnf:", e));
 }
 
 function cancelAnforderung(anfId) {
