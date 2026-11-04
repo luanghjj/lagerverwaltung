@@ -1,5 +1,5 @@
 // ═══ サービスワーカー — 在庫管理 PWA ═══
-const CACHE_NAME = 'lager-v3.3.0';
+const CACHE_NAME = 'lager-v3.3.1';
 const ASSETS = [
   './',
   './index.html',

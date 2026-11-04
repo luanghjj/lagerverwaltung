@@ -182,21 +182,30 @@ function locDeleteDialog(sid, name, onYes) {
 // ═══ QUELLE BEIM AUFFÜLLEN (Bereiche): Standort gesamt oder ein bestimmter Lagerort ═══
 // Gespeichert als quelleId (Standort) + quelleOrt ("" = Standort gesamt). Select-Wert: "sid@@ort".
 const LOC_Q_SEP = "@@";
-function locQuelleOrt(a, sid, ort) { return ort && locHas(a, sid, ort) ? ort : ""; } // Lagerort weg → gesamt
+// Gültige Quelle: Lagerplatz des Standorts oder Lagerort, den der Artikel dort hat. Sonst (gelöscht) → "" = gesamt
+function _locPlaetze(sid) { return [...new Set((typeof D !== "undefined" && D.lagerplaetze || []).filter(lp => lp.standortId === sid && lp.name).map(lp => lp.name))]; }
+function locQuelleOrt(a, sid, ort) { return ort && (locHas(a, sid, ort) || _locPlaetze(sid).includes(ort)) ? ort : ""; }
+// Artikel ohne Lagerplatz an dem Standort (nur eine Zeile, kein Ort) → ganzer Bestand gilt als dort verfügbar
+function _locUnplaced(a, sid) { const rows = locRows(a, sid); return rows.length === 1 && !rows[0].ort; }
 function locQuelleIst(a, sid, ort) {
   const o = locQuelleOrt(a, sid, ort);
-  return o ? locRows(a, sid).find(r => r.ort === o).ist : _locNum(a?.istBestand?.[sid]);
+  if (!o) return _locNum(a?.istBestand?.[sid]);
+  const r = locRows(a, sid).find(x => x.ort === o);
+  return r ? r.ist : _locUnplaced(a, sid) ? _locNum(a?.istBestand?.[sid]) : 0;
 }
 function locQuelleParse(v) { const i = String(v || "").indexOf(LOC_Q_SEP); return i < 0 ? { sid: String(v || ""), ort: "" } : { sid: v.slice(0, i), ort: v.slice(i + LOC_Q_SEP.length) }; }
+// Pro Standort: "🏢 Standort (gesamt n)" + alle Lagerplätze des Standorts (+ Lagerorte des Artikels), Menge des Artikels dort
 function locQuelleSelectHtml(a, sid, ort, id, onchange, style) {
   const cur = locQuelleOrt(a, sid, ort);
   const vi = typeof LANG !== "undefined" && LANG === "vi";
+  const selV = cur ? sid + LOC_Q_SEP + cur : sid;
+  const o = (v, label) => `<option value="${esc(v)}" ${v === selV ? "selected" : ""}>${label}</option>`;
   let h = `<select class="sel" id="${id}" ${onchange ? `onchange="${onchange}"` : ""} onclick="event.stopPropagation()" style="${style || "font-size:10px"}" title="${vi ? "Nguồn" : "Quelle"}">`;
   D.standorte.filter(s => s.aktiv || s.id === sid).forEach(s => {
-    const rows = a ? locRows(a, s.id).filter(r => r.ort) : [];
-    const o = (v, label) => `<option value="${esc(v)}" ${v === sid + LOC_Q_SEP + cur || (!cur && v === s.id && s.id === sid) ? "selected" : ""}>${label}</option>`;
+    const rows = a ? locRows(a, s.id) : [];
+    const names = [...new Set([..._locPlaetze(s.id), ...rows.map(r => r.ort).filter(Boolean)])];
     h += `<optgroup label="${esc(s.name)}">` + o(s.id, `🏢 ${esc(s.name)} (${vi ? "tổng" : "gesamt"}${a ? ` ${_locNum(a.istBestand?.[s.id])}` : ""})`)
-      + rows.map(r => o(s.id + LOC_Q_SEP + r.ort, `📦 ${esc(r.ort)} (${r.ist})`)).join("") + `</optgroup>`;
+      + names.map(n => { const r = rows.find(x => x.ort === n); return o(s.id + LOC_Q_SEP + n, `📦 ${esc(n)}${r ? ` (${r.ist})` : ""}`); }).join("") + `</optgroup>`;
   });
   return h + `</select>`;
 }
@@ -206,8 +215,9 @@ function locTakeFrom(a, sid, qty, ort) {
   const o = locQuelleOrt(a, sid, ort);
   if (!o) return locSetIst(a, sid, Math.max(0, _locNum(a.istBestand?.[sid]) - qty));
   const rows = locRows(a, sid);
-  if (rows.length < 2) { a.istBestand[sid] = Math.max(0, rows[0].ist - qty); return o; }
   const r = rows.find(x => x.ort === o);
+  if (!r) { if (_locUnplaced(a, sid)) a.istBestand[sid] = Math.max(0, rows[0].ist - qty); return o; } // ohne Lagerplatz → vom Bestand; anderswo gelagert → dort nichts
+  if (rows.length < 2) { a.istBestand[sid] = Math.max(0, rows[0].ist - qty); return o; }
   r.ist = Math.max(0, r.ist - qty);
   locStore(a, sid, rows);
   return o;
