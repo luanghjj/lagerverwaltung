@@ -80,9 +80,16 @@ function locStore(a, sid, rows) {
 // IST am Standort auf `neu` setzen. Bei mehreren Lagerorten geht die Differenz an Lagerort `ort`
 // (Standard: erster); ein Abgang, der dort nicht reicht, wird von den nächsten Lagerorten abgezogen.
 // Rückgabe: betroffene Lagerorte für die Bewegung, z.B. "Restaurant" oder "Restaurant 3 · Lager 01 2".
+// Zugang an einen Lagerort, den der Artikel noch nicht hat → wird angelegt (ohne Lagerort: wird zugewiesen).
 function locSetIst(a, sid, neu, ort) {
   a.istBestand = a.istBestand || {};
-  const rows = locRows(a, sid);
+  let rows = locRows(a, sid);
+  if (ort && _locNum(neu) > _locSum(rows, "ist") && !rows.some(r => r.ort === ort)) {
+    if (rows.length === 1 && !rows[0].ort) rows[0].ort = ort;
+    else rows.push({ ort, ist: 0, soll: 0 });
+    locStore(a, sid, rows);
+    rows = locRows(a, sid);
+  }
   if (rows.length < 2) { a.istBestand[sid] = neu; return rows[0].ort; }
   let i = ort ? rows.findIndex(r => r.ort === ort) : 0;
   if (i < 0) i = 0;
@@ -118,12 +125,18 @@ function locSplitDb(a, sid) {
   return rows.length > 1 ? rows.map(r => ({ ort: r.ort, ist: r.ist, soll: r.soll })) : [];
 }
 
-// Auswahl des Lagerorts für Buchungen – nur bei mehreren Lagerorten, sonst ""
-function locSelectHtml(a, sid, id, cur, onchange, style) {
+// Auswahl des Lagerorts für Buchungen. Abgang: nur bei mehreren Lagerorten, sonst "".
+// zugang=true (Wareneingang, Transfer-Empfang): zusätzlich die übrigen Lagerplätze des Standorts (➕ = neu anlegen).
+function locSelectHtml(a, sid, id, cur, onchange, style, zugang) {
   const rows = locRows(a, sid);
-  if (rows.length < 2) return "";
-  const sel = rows.some(r => r.ort === cur) ? cur : rows[0].ort;
-  return `<select class="sel" id="${id}" ${onchange ? `onchange="${onchange}"` : ""} onclick="event.stopPropagation()" style="${style || "font-size:11px;padding:3px 6px"}">${rows.map(r => `<option value="${esc(r.ort)}" ${r.ort === sel ? "selected" : ""}>📦 ${esc(r.ort || "—")} (${r.ist})</option>`).join("")}</select>`;
+  const names = rows.map(r => r.ort);
+  const extra = zugang ? [...new Set((D.lagerplaetze || []).filter(lp => lp.standortId === sid && lp.name && !names.includes(lp.name)).map(lp => lp.name))] : [];
+  if (rows.length < 2 && !extra.length) return "";
+  const sel = names.includes(cur) || extra.includes(cur) ? cur : rows[0].ort;
+  const opt = (v, label) => `<option value="${esc(v)}" ${v === sel ? "selected" : ""}>${label}</option>`;
+  return `<select class="sel" id="${id}" ${onchange ? `onchange="${onchange}"` : ""} onclick="event.stopPropagation()" style="${style || "font-size:11px;padding:3px 6px"}">`
+    + rows.map(r => opt(r.ort, `📦 ${esc(r.ort || "—")} (${r.ist})`)).join("")
+    + extra.map(n => opt(n, `➕ ${esc(n)}`)).join("") + `</select>`;
 }
 
 // Lagerplatz löschen: betroffene Artikel auflisten, je Artikel wählen, wohin Lagerort + Bestand wandern.

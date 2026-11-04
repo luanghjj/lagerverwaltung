@@ -231,7 +231,7 @@ function renderBatch(typ) {
     const nv = isE ? ist+b.menge : ist-b.menge;
     const conv = formatUnitConv(b.menge, a);
     // Mehrere Lagerorte: Lagerort wählen (Standard: erster); sonst wie bisher nur anzeigen
-    const ortSel = locSelectHtml(a, stId, `bort_${b.id}`, b.ort, `batchOrt('${b.id}',this.value)`, "font-size:10.5px;padding:2px 6px;margin-top:2px;max-width:100%");
+    const ortSel = locSelectHtml(a, stId, `bort_${b.id}`, b.ort, `batchOrt('${b.id}',this.value)`, "font-size:10.5px;padding:2px 6px;margin-top:2px;max-width:100%", isE);
     const lagerort = ortSel ? "" : (a.lagerort?.[stId] || "");
     h += `<div class="batch-item"><div style="font-size:11px;color:var(--t3);font-weight:700;width:18px;text-align:center">${idx+1}</div><div class="bi-thumb">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12.5px">${esc(artN(a))}</div><div style="font-size:10px;color:var(--t2)">${esc(a.sku)} · ${ist}→<b style="color:${isE?"var(--gn)":nv<0?"var(--rd)":"var(--yl)"}">${nv}</b> ${esc(a.einheit)} ${conv?`<span class="unit-conv">= ${esc(conv)}</span>`:""}</div>${lagerort?`<div style="margin-top:1px"><span class="loc-tag" style="font-size:9px">📦 ${esc(lagerort)}</span></div>`:""}${ortSel?`<div>${ortSel}</div>`:""}</div><div style="display:flex;align-items:center;gap:4px;flex-shrink:0"><button class="bi" onclick="batchQty('${b.id}',-1,'${typ}')" style="font-size:15px;font-weight:700;width:24px;height:24px;justify-content:center">−</button><input class="inp" type="number" min="1" value="${b.menge}" onchange="batchSet('${b.id}',this.value,'${typ}')" style="width:50px;text-align:center;padding:3px 2px;font-family:var(--m);font-size:14px;font-weight:700"><button class="bi" onclick="batchQty('${b.id}',1,'${typ}')" style="font-size:15px;font-weight:700;width:24px;height:24px;justify-content:center">+</button></div><button class="bi dn" onclick="batchRem('${b.id}','${typ}')">✕</button></div>`;
   });
@@ -266,9 +266,10 @@ function buchenAlle(typ) {
     D.bewegungen.unshift(_bew);
     const a = D.artikel.find(x=>x.id===b.artikelId);
     if (a) {
-      const alt = a.istBestand[stId]||0;
+      const alt = a.istBestand[stId]||0, _ortAlt = a.lagerort?.[stId]||"";
       // Bei mehreren Lagerorten: am gewählten Lagerort; Ausgang, der dort nicht reicht, vom nächsten Lagerort
       _bew.lagerort = locSetIst(a, stId, isE ? alt + b.menge : Math.max(0, alt - b.menge), b.ort);
+      if ((a.lagerort?.[stId]||"") !== _ortAlt) b._ortNeu = true;
       _sumLines.push({a, menge:b.menge});
       _sumChanges.push({a, alt, neu:a.istBestand[stId]});
     }
@@ -279,7 +280,7 @@ function buchenAlle(typ) {
     const bew = D.bewegungen.find(x => x.artikelId === b.artikelId && x.typ === typ);
     if (bew && typeof sbSaveBewegung === "function") sbSaveBewegung(bew).catch(e => console.error("sbBew:", e));
     const a = D.artikel.find(x => x.id === b.artikelId);
-    if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:["ist"]}).catch(e => console.error("sbArt:", e));
+    if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:b._ortNeu?["ist","lagerort"]:["ist"]}).catch(e => console.error("sbArt:", e));
   });
   const stName = D.standorte.find(s=>s.id===stId)?.name||"";
   const batchLines = BATCH.map(b => { const a=D.artikel.find(x=>x.id===b.artikelId); return `• ${b.menge}× ${artN(a)}`; }).join("\n");

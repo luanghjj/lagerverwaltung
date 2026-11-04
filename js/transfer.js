@@ -31,7 +31,7 @@ function renderTransfer(vS, aS) {
       tf.items.forEach((it, i) => {
         const a = D.artikel.find(x=>x.id===it.artId);
         h += `<tr style="border-bottom:1px solid var(--bd)">`;
-        h += `<td style="padding:5px 8px;font-weight:600">${esc(artN(a))}<div style="font-size:9px;color:var(--t3)">${esc(a?.einheit||"")}</div>${a ? locSelectHtml(a, tf.nachId, `tf_ort_${tf.id}_${i}`, "", "", "font-size:10.5px;padding:2px 6px;margin-top:2px;max-width:100%") : ""}</td>`;
+        h += `<td style="padding:5px 8px;font-weight:600">${esc(artN(a))}<div style="font-size:9px;color:var(--t3)">${esc(a?.einheit||"")}</div>${a ? locSelectHtml(a, tf.nachId, `tf_ort_${tf.id}_${i}`, "", "", "font-size:10.5px;padding:2px 6px;margin-top:2px;max-width:100%", true) : ""}</td>`;
         h += `<td style="padding:5px 8px;text-align:right;font-family:var(--m);font-weight:600">${it.menge}</td>`;
         h += `<td style="padding:5px 8px;text-align:center"><input class="inp" type="number" min="0" max="${it.menge}" value="${it.menge}" id="tf_emp_${tf.id}_${i}" style="width:65px;text-align:center;padding:5px;font-family:var(--m);font-size:15px;font-weight:700;border:2px solid var(--ac)" onchange="tfCalcDiff('${tf.id}',${i},this.value,${it.menge})"></td>`;
         h += `<td style="padding:5px 8px;text-align:right" id="tf_diff_${tf.id}_${i}"><span style="font-family:var(--m);font-weight:700;color:var(--gn)">0</span></td>`;
@@ -367,7 +367,9 @@ function confirmTransfer(tfId, itemCount) {
       // Book received qty at target
       if (e.empfangen > 0) {
         const alt = a.istBestand[tf.nachId]||0;
+        const _ortAlt = a.lagerort?.[tf.nachId]||"";
         const _lo = locSetIst(a, tf.nachId, (a.istBestand[tf.nachId]||0) + e.empfangen, e.ort);
+        if ((a.lagerort?.[tf.nachId]||"") !== _ortAlt) e._ortNeu = true;
         _sumLines.push({a, menge:e.empfangen});
         _sumChanges.push({a, alt, neu:a.istBestand[tf.nachId]});
         const bew = { id:uid(), typ:"eingang", artikelId:e.artId, standortId:tf.nachId, menge:e.empfangen, datum:nw(), benutzer:U.id, referenz:`UB←${von?.name}`, notiz:`Transfer ${von?.name}→${nach?.name}`, lieferantId:"", lagerort:_lo };
@@ -395,7 +397,9 @@ function confirmTransfer(tfId, itemCount) {
     save(); render();
     if (typeof sbSaveTransfer === "function") sbSaveTransfer(tf).catch(e => console.error("sbSaveTransfer:", e));
     if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbSaveBewegung:", e)));
-    if (typeof sbSaveArtikel === "function") empfangen.forEach(e => { const a = D.artikel.find(x => x.id === e.artId); if (a) sbSaveArtikel(a, {meta:false,sids:[tf.vonId,tf.nachId],fields:["ist"]}).catch(e2 => console.error("sbSaveArtikel:", e2)); });
+    if (typeof sbSaveArtikel === "function") empfangen.forEach(e => { const a = D.artikel.find(x => x.id === e.artId); if (!a) return; const _ortNeu = e._ortNeu; delete e._ortNeu;
+      sbSaveArtikel(a, {meta:false,sids:[tf.vonId],fields:["ist"]}).catch(e2 => console.error("sbSaveArtikel:", e2));
+      sbSaveArtikel(a, {meta:false,sids:[tf.nachId],fields:_ortNeu?["ist","lagerort"]:["ist"]}).catch(e2 => console.error("sbSaveArtikel:", e2)); });
 
     const fehlCount = empfangen.filter(e=>e.diff<0).length;
     const tgLines = empfangen.map(e=>{const a=D.artikel.find(x=>x.id===e.artId);return `• ${artN(a)}: ${e.gesendet}→${e.empfangen}${e.diff<0?" ⚠":""}`;}).join("\n");
