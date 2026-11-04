@@ -7,10 +7,21 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // ── Generic fetch helper ──
-async function sbFetch(table, query) {
-  const { data, error } = await sb.from(table).select(query || "*");
-  if (error) { console.error(`[sb] ${table}:`, error.message); return []; }
-  return data || [];
+// PostgREST liefert max. 1000 Zeilen pro Anfrage → seitenweise laden,
+// sonst fehlen bei großen Tabellen (z.B. artikel_bestand) Zeilen nach dem Neuladen.
+const SB_PAGE = 1000;
+async function sbFetch(table, query, orderCols) {
+  const order = orderCols || ["id"];
+  const all = [];
+  for (let from = 0; ; from += SB_PAGE) {
+    let q = sb.from(table).select(query || "*");
+    order.forEach(c => { q = q.order(c, { ascending: true }); });
+    const { data, error } = await q.range(from, from + SB_PAGE - 1);
+    if (error) { console.error(`[sb] ${table}:`, error.message); return []; }
+    all.push(...(data || []));
+    if (!data || data.length < SB_PAGE) break;
+  }
+  return all;
 }
 
 // ── Login by PIN ──
@@ -46,16 +57,16 @@ async function sbLoadAll() {
       sbFetch("users"),
       sbFetch("lieferanten"),
       sbFetch("artikel"),
-      sbFetch("artikel_bestand"),
-      sbFetch("artikel_kategorien"),
-      sbFetch("artikel_lieferanten"),
+      sbFetch("artikel_bestand", "*", ["artikel_id","standort_id"]),
+      sbFetch("artikel_kategorien", "*", ["artikel_id","kategorie_id"]),
+      sbFetch("artikel_lieferanten", "*", ["artikel_id","lieferant_id"]),
       sbFetch("bewegungen"),
       sbFetch("bestellungen"),
       sbFetch("bestellliste"),
       sbFetch("transfers"),
       sbFetch("transfer_items"),
       sbFetch("bereiche"),
-      sbFetch("bereich_artikel"),
+      sbFetch("bereich_artikel", "*", ["bereich_id","artikel_id"]),
       sbFetch("anforderungen"),
       sbFetch("anforderung_items"),
       sbFetch("auffuellungen"),
@@ -307,12 +318,13 @@ async function sbSaveArtikel(a) {
     }, { onConflict: "artikel_id,standort_id" });
   }
   // 2b. Ensure all active standorte have a bestand row (fill missing with 0)
+  //     Nur anlegen, nie überschreiben: fehlt die Zeile nur lokal, bleibt der echte Bestand erhalten.
   if (typeof D !== "undefined" && D.standorte) {
     for (const s of D.standorte.filter(s => s.aktiv && !syncedSids.has(s.id))) {
       await sb.from("artikel_bestand").upsert({
         artikel_id: a.id, standort_id: s.id,
         ist_bestand: 0, soll_bestand: 0, mindestmenge: 0, lagerort: ""
-      }, { onConflict: "artikel_id,standort_id" });
+      }, { onConflict: "artikel_id,standort_id", ignoreDuplicates: true });
     }
   }
   // 3. Replace kategorien
