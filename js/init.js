@@ -34,6 +34,7 @@ let APP_ONLINE = true;
     load();
     APP_ONLINE = false;
     console.log("⚠️ App loaded from localStorage (offline)");
+    setTimeout(() => toast(LANG==="vi"?"⚠ Không tải được dữ liệu từ server – đang hiện dữ liệu cũ trên máy. Tải lại trang khi có mạng.":"⚠ Server-Daten nicht geladen – lokaler (alter) Stand. Bei Verbindung Seite neu laden.","e"), 800);
   }
 
   // Listen for online/offline events

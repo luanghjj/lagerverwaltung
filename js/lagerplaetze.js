@@ -151,7 +151,7 @@ function saveLagerplatz(id, isEdit) {
   // If renamed, also sync affected articles
   if (isEdit) {
     D.artikel.forEach(a => {
-      if (a.lagerort?.[f.standortId] === name && typeof sbSaveArtikel === "function") sbSaveArtikel(a);
+      if (a.lagerort?.[f.standortId] === name && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[f.standortId],fields:["lagerort"]}).catch(e => console.error("sbArt:", e));
     });
   }
 }
@@ -165,9 +165,8 @@ function delLagerplatz(id) {
 
   cConfirm(label, () => {
     // Remove lagerort from articles
-    D.artikel.forEach(a => {
-      if (a.lagerort?.[lp.standortId] === lp.name) delete a.lagerort[lp.standortId];
-    });
+    const affected = D.artikel.filter(a => a.lagerort?.[lp.standortId] === lp.name);
+    affected.forEach(a => { a.lagerort[lp.standortId] = ""; });
     // Remove from standort array
     const st = D.standorte.find(s=>s.id===lp.standortId);
     if (st?.lagerplaetze) st.lagerplaetze = st.lagerplaetze.filter(n=>n!==lp.name);
@@ -176,9 +175,9 @@ function delLagerplatz(id) {
     save(); render(); toast("✓","i");
     // Sync to Supabase
     if (typeof sbDeleteLagerplatz === "function") sbDeleteLagerplatz(id);
-    // Sync affected articles
-    D.artikel.forEach(a => {
-      if (typeof sbSaveArtikel === "function" && a.lagerort) sbSaveArtikel(a);
+    // Sync nur betroffene Artikel, nur Lagerort dieses Standorts
+    affected.forEach(a => {
+      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[lp.standortId],fields:["lagerort"]}).catch(e => console.error("sbArt:", e));
     });
   });
 }

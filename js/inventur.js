@@ -227,8 +227,8 @@ function finishInventur() {
   if (!counted) { toast(LANG==="vi"?"Chưa đếm gì":"Nichts gezählt","e"); return; }
   const diffs = Object.entries(INV_DATA).filter(([,v])=>v.diff!==0);
 
-  const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s=>U.standorte.includes(s.id));
-  const stId = STF !== "all" ? STF : vS[0]?.id;
+  // Standort, an dem gezählt wurde (aus Entwurf), nicht der evtl. inzwischen gewählte
+  const stId = invDrafts()[U.id]?.stId || invStId();
   const stName = D.standorte.find(s=>s.id===stId)?.name || "";
 
   const label = LANG==="vi"
@@ -269,7 +269,7 @@ function finishInventur() {
     save(); render();
     // Supabase sync: inventur + corrected articles + corrections ledger
     if (typeof sbSaveInventur === "function") sbSaveInventur({ id: prot.id, standortId: prot.standortId, datum: prot.datum, benutzer: prot.benutzer }, prot.items.map(it => ({ artikelId: it.artikelId, gezaehlt: it.gezaehlt, systemBestand: it.system, diff: it.diff }))).catch(e => console.error("sbInv:", e));
-    invItems.forEach(it => { if (it.diff !== 0) { const a = D.artikel.find(x => x.id === it.artikelId); if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e)); } });
+    invItems.forEach(it => { if (it.diff !== 0) { const a = D.artikel.find(x => x.id === it.artikelId); if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:["ist"]}).catch(e => console.error("sbArt:", e)); } });
     if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbBew:", e)));
     if (typeof logActivity === "function") logActivity("inventur", `Abgeschlossen @ ${stName}: ${invItems.length} Artikel gezählt, ${_newBews.length} Korrekturen`, { phase: "abschluss", protokollId: protId, standortId: stId, gezaehlt: invItems.length, korrekturen: _newBews.length });
     const diffLines = diffLog.slice(0,10).map(d => `• ${d.name}: ${d.sysIst}→${d.gezählt} (${d.diff>0?"+":""}${d.diff})`).join("\n");

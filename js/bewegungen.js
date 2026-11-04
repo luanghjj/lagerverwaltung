@@ -275,7 +275,7 @@ function buchenAlle(typ) {
     const bew = D.bewegungen.find(x => x.artikelId === b.artikelId && x.typ === typ);
     if (bew && typeof sbSaveBewegung === "function") sbSaveBewegung(bew).catch(e => console.error("sbBew:", e));
     const a = D.artikel.find(x => x.id === b.artikelId);
-    if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+    if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:["ist"]}).catch(e => console.error("sbArt:", e));
   });
   const stName = D.standorte.find(s=>s.id===stId)?.name||"";
   const batchLines = BATCH.map(b => { const a=D.artikel.find(x=>x.id===b.artikelId); return `• ${b.menge}× ${artN(a)}`; }).join("\n");

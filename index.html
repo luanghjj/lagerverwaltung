@@ -22,7 +22,7 @@
 <div id="toasts" class="tst-c"></div>
 
 <!-- Supabase (must load first) -->
-<script src="js/supabase.js?v=2.1.0"></script>
+<script src="js/supabase.js?v=3.0.0"></script>
 
 <!-- Core (load order matters!) -->
 <script src="js/config.js?v=2.0.8"></script>
@@ -35,25 +35,25 @@
 <script src="js/dashboard.js?v=2.0.9"></script>
 <script src="js/auswertung.js?v=2.0.8"></script>
 <script src="js/artikel.js?v=2.0.9"></script>
-<script src="js/bewegungen.js?v=2.1.0"></script>
-<script src="js/inventur.js?v=2.1.0"></script>
-<script src="js/transfer.js?v=2.1.0"></script>
+<script src="js/bewegungen.js?v=3.0.0"></script>
+<script src="js/inventur.js?v=3.0.0"></script>
+<script src="js/transfer.js?v=3.0.0"></script>
 <script src="js/export_bew.js?v=2.0.8"></script>
 <script src="js/bestellliste.js?v=2.0.9"></script>
-<script src="js/bestellungen.js?v=2.0.8"></script>
+<script src="js/bestellungen.js?v=3.0.0"></script>
 <script src="js/lieferanten.js?v=2.0.9"></script>
 <script src="js/benutzer.js?v=2.0.8"></script>
-<script src="js/restaurant.js?v=2.1.1"></script>
+<script src="js/restaurant.js?v=3.0.0"></script>
 <script src="js/standorte.js?v=2.0.9"></script>
-<script src="js/lagerplaetze_inline.js?v=2.0.9"></script>
+<script src="js/lagerplaetze_inline.js?v=3.0.0"></script>
 <script src="js/qr.js?v=2.0.8"></script>
-<script src="js/lagerplaetze.js?v=2.0.8"></script>
+<script src="js/lagerplaetze.js?v=3.0.0"></script>
 <script src="js/kategorien.js?v=2.0.8"></script>
 <script src="js/einstellungen.js?v=2.0.8"></script>
-<script src="js/artikel_detail.js?v=2.0.9"></script>
+<script src="js/artikel_detail.js?v=3.0.0"></script>
 <script src="js/export.js?v=2.0.8"></script>
 <script src="js/login.js?v=2.0.9"></script>
-<script src="js/navigation.js?v=2.0.8"></script>
+<script src="js/navigation.js?v=3.0.0"></script>
 <script src="js/activity_log.js?v=2.0.8"></script>
 <script src="js/telegram.js?v=2.0.8"></script>
 
@@ -64,15 +64,26 @@
 <script src="js/offline.js?v=2.0.9"></script>
 
 <!-- Realtime Sync -->
-<script src="js/realtime.js?v=2.0.8"></script>
+<script src="js/realtime.js?v=3.0.0"></script>
 
 <!-- Init (must be last) -->
-<script src="js/init.js?v=2.0.8"></script>
+<script src="js/init.js?v=3.0.0"></script>
 <script>
   if ('serviceWorker' in navigator) {
+    const hadSW = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register('./sw.js')
-      .then(r => console.log('SW registered:', r.scope))
+      .then(r => { console.log('SW registered:', r.scope); setInterval(() => r.update().catch(() => {}), 5 * 60 * 1000); })
       .catch(e => console.log('SW error:', e));
+    // Neue Version aktiv → Hinweis zum Neuladen (alte Tabs sollen keinen alten Code weiter ausführen)
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadSW || document.getElementById('swUpdBar')) return;
+      const b = document.createElement('button');
+      b.id = 'swUpdBar'; b.type = 'button';
+      b.textContent = (typeof LANG !== 'undefined' && LANG === 'vi') ? '🔄 Có bản mới – bấm để tải lại' : '🔄 Neue Version – tippen zum Neuladen';
+      b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));z-index:10000;padding:10px 16px;border:0;border-radius:20px;background:var(--ac,#3b82f6);color:#fff;font-weight:700;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+      b.onclick = () => location.reload();
+      document.body.appendChild(b);
+    });
   }
 </script>
 </body>

@@ -827,7 +827,7 @@ function confirmAnforderung(anfId) {
     // Supabase sync
     if (typeof sbSaveAnforderung === "function") sbSaveAnforderung(anf).catch(e => console.error("sbAnf:", e));
     if (typeof sbSaveBewegung === "function") _newAufBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbBew:", e)));
-    fillData.forEach(d => { if (d.fillQty > 0) { const af = D.auffuellungen.find(x => x.artikelId === d.artikelId && x.anforderungId === anfId); if (af && typeof sbSaveAuffuellung === "function") sbSaveAuffuellung(af).catch(e => console.error("sbAuf:", e)); if (d.art && typeof sbSaveArtikel === "function") sbSaveArtikel(d.art).catch(e => console.error("sbArt:", e)); } });
+    fillData.forEach(d => { if (d.fillQty > 0) { const af = D.auffuellungen.find(x => x.artikelId === d.artikelId && x.anforderungId === anfId); if (af && typeof sbSaveAuffuellung === "function") sbSaveAuffuellung(af).catch(e => console.error("sbAuf:", e)); if (d.art && typeof sbSaveArtikel === "function") sbSaveArtikel(d.art, {meta:false,sids:[d.quelleId],fields:["ist"]}).catch(e => console.error("sbArt:", e)); } });
     toast(`✓ ${count} ${t("c.article")} ${LANG==="vi"?"đã xuất kho":"abgebucht"} (${totalFill} ${LANG==="vi"?"đơn vị":"Einh."})`, "s");
     const _brN = br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):"";
     const _now = bookNowStr();
@@ -855,14 +855,16 @@ function undoAuffuellung(afId) {
   cConfirm(label, () => {
     let _undoBew = null;
     if (a) {
-      const stId = br?.standortId || D.standorte[0]?.id || "";
+      // Zurück an das Lager, aus dem aufgefüllt wurde (nicht das des Bereichs)
+      const srcBew = D.bewegungen.find(b => b.typ === "ausgang" && b.artikelId === af.artikelId && (b.referenz||"").startsWith("RST-") && b.datum === af.datum && b.menge === af.menge);
+      const stId = af.quelleId || srcBew?.standortId || br?.standortId || D.standorte[0]?.id || "";
       a.istBestand[stId] = (a.istBestand[stId]||0) + af.menge;
       _undoBew = { id: uid(), typ: "eingang", artikelId: af.artikelId, standortId: stId, menge: af.menge, datum: nw(), benutzer: U.id, referenz: `UNDO-RST`, notiz: `${LANG==="vi"?"Hoàn tác bổ sung":"Auffüllung rückgängig"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}`, lieferantId: "" };
       D.bewegungen.unshift(_undoBew);
     }
     D.auffuellungen = D.auffuellungen.filter(x=>x.id!==afId);
     save(); render();
-    if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+    if (a && _undoBew && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[_undoBew.standortId],fields:["ist"]}).catch(e => console.error("sbArt:", e));
     if (_undoBew && typeof sbSaveBewegung === "function") sbSaveBewegung(_undoBew).catch(e => console.error("sbBew:", e));
     if (typeof sb !== "undefined") sb.from("auffuellungen").delete().eq("id", afId).then(({ error }) => { if (error) console.error("sbDelAuf:", error.message); });
     toast(`↩ ${af.menge}× ${artN(a)} ${LANG==="vi"?"đã hoàn tác":"rückgängig"}`, "s");

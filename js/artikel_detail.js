@@ -155,6 +155,10 @@ function addInterTransfer(artId, vonStId) {
       D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:artId, standortId:vonStId, zielStandortId:nachStId, menge:actualQty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"" });
       D.transfers.unshift({ id:uid(), vonId:vonStId, nachId:nachStId, items:[{artId,menge:actualQty}], status:"unterwegs", datum:nw(), benutzer:U.id });
       save(); closeModal(); render();
+      // Supabase sync (fehlte: Umbuchung ging beim Neuladen verloren)
+      if (typeof sbSaveTransfer === "function") sbSaveTransfer(D.transfers[0]).catch(e => console.error("sbSaveTransfer:", e));
+      if (typeof sbSaveBewegung === "function") sbSaveBewegung(D.bewegungen[0]).catch(e => console.error("sbSaveBewegung:", e));
+      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[vonStId],fields:["ist"]}).catch(e => console.error("sbSaveArtikel:", e));
       toast(`⇄ ${actualQty}× ${artN(a)} ${vonName} → ${nachName} (${LANG==="vi"?"chờ xác nhận":"wartet"})`,"s");
     }
   );
@@ -240,7 +244,10 @@ function editArtikel(id) {
     h += `<div class="fg"><label>${t("a.target")}</label><input class="inp" type="number" id="ae_soll_${s.id}" value="${f.sollBestand[s.id]||""}"></div>`;
     h += `<div class="fg"><label>${t("a.minimum")}</label><input class="inp" type="number" id="ae_min_${s.id}" value="${f.mindestmenge[s.id]||""}"></div>`;
     const lpOpts = (D.lagerplaetze||[]).filter(lp=>lp.standortId===s.id).map(lp => `<option value="${esc(lp.name)}" ${f.lagerort?.[s.id]===lp.name?"selected":""}>${esc(lp.name)}</option>`).join("");
-    h += `<div class="fg"><label>${t("c.storageloc")}</label><select class="sel" id="ae_loc_${s.id}"><option value="">— ${LANG==="vi"?"Chọn":"Wählen"} —</option>${lpOpts}</select></div>`;
+    // Lagerort, der (noch) kein Lagerplatz ist, als Option behalten – sonst würde Speichern ihn löschen
+    const curLoc = f.lagerort?.[s.id] || "";
+    const extraOpt = curLoc && !(D.lagerplaetze||[]).some(lp=>lp.standortId===s.id && lp.name===curLoc) ? `<option value="${esc(curLoc)}" selected>${esc(curLoc)}</option>` : "";
+    h += `<div class="fg"><label>${t("c.storageloc")}</label><select class="sel" id="ae_loc_${s.id}"><option value="">— ${LANG==="vi"?"Chọn":"Wählen"} —</option>${extraOpt}${lpOpts}</select></div>`;
     h += `</div></div>`;
   });
 
@@ -256,6 +263,7 @@ function editArtikel(id) {
 
   // Store state in window for callbacks
   window._aeForm = f;
+  window._aeOrig = JSON.parse(JSON.stringify(f)); // Stand beim Öffnen → nur geänderte Felder speichern
   window._aeNameDupConfirmed = false;
   window._aeSollWarnConfirmed = false;
   document.body.insertAdjacentHTML("beforeend", h);
@@ -488,8 +496,23 @@ function aeSave(id, isEdit) {
   f.lieferanten = liefs;
 
   // Save
+  const _bestChanges = {}; // sid -> ["ist","soll","min","lagerort"]
   if (isEdit) {
     const idx = D.artikel.findIndex(x=>x.id===id);
+    const cur = idx >= 0 ? D.artikel[idx] : null;
+    const orig = window._aeOrig || {};
+    const MAP = { ist: "istBestand", soll: "sollBestand", min: "mindestmenge", lagerort: "lagerort" };
+    // Nur Felder übernehmen, die im Formular geändert wurden; alles andere bleibt auf dem aktuellen Stand
+    D.standorte.forEach(s => {
+      Object.entries(MAP).forEach(([k, prop]) => {
+        f[prop] = f[prop] || {};
+        const was = (orig[prop] || {})[s.id], now = f[prop][s.id];
+        const norm = v => k === "lagerort" ? (v || "") : (v || 0);
+        const changed = aeStandorte.some(x => x.id === s.id) && norm(was) !== norm(now);
+        if (changed) (_bestChanges[s.id] = _bestChanges[s.id] || []).push(k);
+        else if (cur) { if (cur[prop] && s.id in cur[prop]) f[prop][s.id] = cur[prop][s.id]; else delete f[prop][s.id]; }
+      });
+    });
     if (idx >= 0) D.artikel[idx] = f;
   } else {
     // Auto-fill: khi tạo SP mới, copy sollBestand/mindestmenge từ kho gốc sang các kho khác
@@ -517,6 +540,7 @@ function aeSave(id, isEdit) {
     f.createdBy = U.id;
     f.rejectedReason = "";
     D.artikel.push(f);
+    D.standorte.filter(s => s.aktiv).forEach(s => { _bestChanges[s.id] = ["ist", "soll", "min", "lagerort"]; });
   }
   // Update Bereiche membership (Admin/Manager only)
   const _changedBereiche = [];
@@ -534,7 +558,12 @@ function aeSave(id, isEdit) {
   save();
   closeModal();
   render();
-  if (typeof sbSaveArtikel === "function") sbSaveArtikel(f).catch(e => console.error("sbSaveArtikel:", e));
+  if (typeof sbSaveArtikel === "function") {
+    const _err = e => { console.error("sbSaveArtikel:", e); toast(LANG==="vi"?"⚠ Lỗi lưu lên server":"⚠ Speichern auf Server fehlgeschlagen","e"); };
+    sbSaveArtikel(f, { sids: Object.keys(_bestChanges).filter(sid => _bestChanges[sid].length === 4) , fields: ["ist","soll","min","lagerort"] }).then(() =>
+      Promise.all(Object.entries(_bestChanges).filter(([, fl]) => fl.length < 4).map(([sid, fl]) => sbSaveArtikel(f, { meta: false, sids: [sid], fields: fl })))
+    ).catch(_err);
+  }
   _changedBereiche.forEach(br => { if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e)); });
   // Auto-migrate base64 images to Storage URLs (fire & forget)
   if (typeof sbMigrateBase64 === "function") sbMigrateBase64(f);
@@ -594,7 +623,7 @@ function quickBook(artId, stId, typ, menge) {
   const _qbBew = { id:uid(), typ, artikelId:artId, standortId:stId, menge, datum:nw(), benutzer:U.id, referenz:"QUICK", notiz:"", lieferantId:"" };
   D.bewegungen.unshift(_qbBew);
   save();
-  if (typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e=>console.error("sbArt:",e));
+  if (typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:["ist"]}).catch(e=>console.error("sbArt:",e));
   if (typeof sbSaveBewegung === "function") sbSaveBewegung(_qbBew).catch(e=>console.error("sbBew:",e));
   // Re-open detail to show updated stock
   closeModal();

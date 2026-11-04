@@ -49,7 +49,8 @@ function handleRealtimeChange(table, payload) {
   const now = Date.now();
 
   // Ignore own changes (check if the change was made in the last 500ms - likely from this client)
-  if (now - _rtLastSync < RT_DEBOUNCE) return;
+  // Kurz nach eigener Änderung nicht verwerfen, sondern später neu laden (sonst gehen fremde Änderungen verloren)
+  const wait = Math.max(1000, RT_DEBOUNCE - (now - _rtLastSync) + 1500);
 
   console.log(`📡 [RT] ${table}: ${payload.eventType}`, payload.new?.id || payload.old?.id || "");
 
@@ -57,7 +58,7 @@ function handleRealtimeChange(table, payload) {
   if (window._rtReloadTimer) clearTimeout(window._rtReloadTimer);
   window._rtReloadTimer = setTimeout(async () => {
     await realtimeReload();
-  }, 1000);
+  }, wait);
 }
 
 async function realtimeReload() {

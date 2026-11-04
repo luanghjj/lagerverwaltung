@@ -17,7 +17,9 @@ async function sbFetch(table, query, orderCols) {
     let q = sb.from(table).select(query || "*");
     order.forEach(c => { q = q.order(c, { ascending: true }); });
     const { data, error } = await q.range(from, from + SB_PAGE - 1);
-    if (error) { console.error(`[sb] ${table}:`, error.message); return []; }
+    // Fehler NICHT als leere Tabelle behandeln: sonst würde ein unvollständiges D gespeichert
+    // und beim nächsten Speichern 0/'' über echte Werte geschrieben.
+    if (error) { console.error(`[sb] ${table}:`, error.message); throw new Error(`[sb] ${table}: ${error.message}`); }
     all.push(...(data || []));
     if (!data || data.length < SB_PAGE) break;
   }
@@ -291,9 +293,19 @@ async function sbDelete(table, id) {
   return !error;
 }
 
-// Save artikel + bestand + kategorien + lieferanten
-async function sbSaveArtikel(a) {
+// Save artikel (+ optional bestand / kategorien / lieferanten)
+// opts.meta   (default true):  Artikel-Stammdaten + Kategorien + Lieferanten schreiben
+// opts.sids   (default []):    nur für diese Standorte Bestand-Felder schreiben
+// opts.fields (default alle):  welche Bestand-Felder: "ist","soll","min","lagerort"
+// Nie mehr alle Standorte aus dem lokalen (evtl. veralteten) Stand überschreiben.
+const SB_BESTAND_COLS = { ist: ["ist_bestand", "istBestand"], soll: ["soll_bestand", "sollBestand"], min: ["mindestmenge", "mindestmenge"], lagerort: ["lagerort", "lagerort"] };
+async function sbSaveArtikel(a, opts) {
+  const o = opts || {};
+  const meta = o.meta !== false;
+  const sids = (o.sids || []).filter(Boolean);
+  const fields = o.fields || ["ist", "soll", "min", "lagerort"];
   // 1. Upsert artikel (only columns that exist in DB)
+  if (meta) {
   const { error: artErr } = await sb.from("artikel").upsert({
     id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "",
     barcodes: a.barcodes || [], bilder: a.bilder || [],
@@ -304,29 +316,37 @@ async function sbSaveArtikel(a) {
   });
   if (artErr) {
     console.error("[sbSaveArtikel] artikel upsert:", artErr.message);
-    return;
+    throw new Error("artikel: " + artErr.message);
   }
-  // 2. Upsert bestand per standort (existing keys)
-  const syncedSids = new Set();
-  for (const [sid, ist] of Object.entries(a.istBestand || {})) {
-    syncedSids.add(sid);
-    await sb.from("artikel_bestand").upsert({
-      artikel_id: a.id, standort_id: sid,
-      ist_bestand: ist, soll_bestand: (a.sollBestand || {})[sid] || 0,
-      mindestmenge: (a.mindestmenge || {})[sid] || 0,
-      lagerort: (a.lagerort || {})[sid] || ""
-    }, { onConflict: "artikel_id,standort_id" });
+  }
+  // 2. Bestand: nur angegebene Standorte + Felder (update, Zeile anlegen falls nicht vorhanden)
+  for (const sid of [...new Set(sids)]) {
+    const patch = {};
+    fields.forEach(k => {
+      const [col, prop] = SB_BESTAND_COLS[k];
+      const v = (a[prop] || {})[sid];
+      patch[col] = k === "lagerort" ? (v || "") : (v || 0);
+    });
+    const { data: upd, error: updErr } = await sb.from("artikel_bestand").update(patch)
+      .eq("artikel_id", a.id).eq("standort_id", sid).select("artikel_id");
+    if (updErr) { console.error("[sbSaveArtikel] bestand:", updErr.message); throw new Error("bestand: " + updErr.message); }
+    if (!upd || !upd.length) {
+      const row = { artikel_id: a.id, standort_id: sid, ist_bestand: 0, soll_bestand: 0, mindestmenge: 0, lagerort: "", ...patch };
+      const { error: insErr } = await sb.from("artikel_bestand").upsert(row, { onConflict: "artikel_id,standort_id", ignoreDuplicates: true });
+      if (insErr) { console.error("[sbSaveArtikel] bestand insert:", insErr.message); throw new Error("bestand: " + insErr.message); }
+    }
   }
   // 2b. Ensure all active standorte have a bestand row (fill missing with 0)
   //     Nur anlegen, nie überschreiben: fehlt die Zeile nur lokal, bleibt der echte Bestand erhalten.
-  if (typeof D !== "undefined" && D.standorte) {
-    for (const s of D.standorte.filter(s => s.aktiv && !syncedSids.has(s.id))) {
+  if (meta && typeof D !== "undefined" && D.standorte) {
+    for (const s of D.standorte.filter(s => s.aktiv && !sids.includes(s.id) && !((a.istBestand || {}).hasOwnProperty(s.id)))) {
       await sb.from("artikel_bestand").upsert({
         artikel_id: a.id, standort_id: s.id,
         ist_bestand: 0, soll_bestand: 0, mindestmenge: 0, lagerort: ""
       }, { onConflict: "artikel_id,standort_id", ignoreDuplicates: true });
     }
   }
+  if (!meta) return;
   // 3. Replace kategorien
   await sb.from("artikel_kategorien").delete().eq("artikel_id", a.id);
   if (a.kategorien?.length) {

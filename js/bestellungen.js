@@ -238,7 +238,7 @@ function bestConfirmOne(id) {
     // Supabase sync: order status + stock + movement (empfangen/fehlmenge bleiben lokal — keine DB-Spalte)
     if (typeof sbSaveBestellung === "function") sbSaveBestellung(b).catch(e => console.error("sbBest:", e));
     if (a && empfangen > 0) {
-      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e));
+      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[b.standortId],fields:["ist"]}).catch(e => console.error("sbArt:", e));
       const bew = D.bewegungen.find(x => x.typ === "eingang" && x.artikelId === b.artikelId && x.referenz === `B-${b.id}`);
       if (bew && typeof sbSaveBewegung === "function") sbSaveBewegung(bew).catch(e => console.error("sbBew:", e));
     }
@@ -285,7 +285,7 @@ function bestConfirmAll(liefKey) {
     data.forEach(d => {
       if (typeof sbSaveBestellung === "function") sbSaveBestellung(d.b).catch(e => console.error("sbBest:", e));
       if (d.a && d.empfangen > 0) {
-        if (typeof sbSaveArtikel === "function") sbSaveArtikel(d.a).catch(e => console.error("sbArt:", e));
+        if (typeof sbSaveArtikel === "function") sbSaveArtikel(d.a, {meta:false,sids:[d.b.standortId],fields:["ist"]}).catch(e => console.error("sbArt:", e));
         const bew = D.bewegungen.find(x => x.typ === "eingang" && x.artikelId === d.b.artikelId && x.referenz === `B-${d.b.id}`);
         if (bew && typeof sbSaveBewegung === "function") sbSaveBewegung(bew).catch(e => console.error("sbBew:", e));
       }

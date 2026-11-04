@@ -270,7 +270,7 @@ function execTransfer() {
     // Also save each bewegung to Supabase
     if (typeof sbSaveBewegung === "function") items.forEach(it => { const bew = D.bewegungen.find(b => b.artikelId === it.artId && b.typ === "umbuchung"); if (bew) sbSaveBewegung(bew).catch(e => console.error("sbSaveBewegung:", e)); });
     // Also save updated artikel stock
-    if (typeof sbSaveArtikel === "function") items.forEach(it => { const a = D.artikel.find(x => x.id === it.artId); if (a) sbSaveArtikel(a).catch(e => console.error("sbSaveArtikel:", e)); });
+    if (typeof sbSaveArtikel === "function") items.forEach(it => { const a = D.artikel.find(x => x.id === it.artId); if (a) sbSaveArtikel(a, {meta:false,sids:[vonId],fields:["ist"]}).catch(e => console.error("sbSaveArtikel:", e)); });
     sendTG("transfer", `⇄ *Transfer gesendet*\n📤 ${vonName} → 📥 ${nachName}\n${items.length} Pos.\n👤 ${U?.name||"?"}\n\n${items.map(it=>{const a=D.artikel.find(x=>x.id===it.artId);return `• ${it.menge}× ${artN(a)}`;}).join("\n")}`);
     toast(`📤 ${items.length} ${t("c.article")} → ${nachName} (${LANG==="vi"?"chờ xác nhận":"wartet auf Bestätigung"})`, "s");
     if (items.length) showBookingSummary(buildBookingText([{title:`${vonName} → ${nachName} ${LANG==="vi"?"Chuyển kho (đã gửi)":"Umbuchung (gesendet)"} – ${bookNowStr()}`, lines:_sumLines, changes:_sumChanges}]));
@@ -385,7 +385,7 @@ function confirmTransfer(tfId, itemCount) {
     save(); render();
     if (typeof sbSaveTransfer === "function") sbSaveTransfer(tf).catch(e => console.error("sbSaveTransfer:", e));
     if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbSaveBewegung:", e)));
-    if (typeof sbSaveArtikel === "function") empfangen.forEach(e => { const a = D.artikel.find(x => x.id === e.artId); if (a) sbSaveArtikel(a).catch(e2 => console.error("sbSaveArtikel:", e2)); });
+    if (typeof sbSaveArtikel === "function") empfangen.forEach(e => { const a = D.artikel.find(x => x.id === e.artId); if (a) sbSaveArtikel(a, {meta:false,sids:[tf.vonId,tf.nachId],fields:["ist"]}).catch(e2 => console.error("sbSaveArtikel:", e2)); });
 
     const fehlCount = empfangen.filter(e=>e.diff<0).length;
     const tgLines = empfangen.map(e=>{const a=D.artikel.find(x=>x.id===e.artId);return `• ${artN(a)}: ${e.gesendet}→${e.empfangen}${e.diff<0?" ⚠":""}`;}).join("\n");
@@ -425,7 +425,7 @@ function rejectTransfer(tfId) {
     save(); render();
     if (typeof sbSaveTransfer === "function") sbSaveTransfer(tf).catch(e => console.error("sbSaveTransfer:", e));
     if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbSaveBewegung:", e)));
-    if (typeof sbSaveArtikel === "function") tf.items.forEach(it => { const a = D.artikel.find(x => x.id === it.artId); if (a) sbSaveArtikel(a).catch(e => console.error("sbSaveArtikel:", e)); });
+    if (typeof sbSaveArtikel === "function") tf.items.forEach(it => { const a = D.artikel.find(x => x.id === it.artId); if (a) sbSaveArtikel(a, {meta:false,sids:[tf.vonId],fields:["ist"]}).catch(e => console.error("sbSaveArtikel:", e)); });
     const nach = D.standorte.find(s=>s.id===tf.nachId);
     sendTG("transfer", `↩ *Transfer zurückgewiesen*\n📤 ${von?.name} → 📥 ${nach?.name}\n👤 ${U?.name||"?"}\n${tf.items.length} Artikel zurückgebucht`);
     toast(`↩ ${LANG==="vi"?"Đã từ chối":"Zurückgewiesen"} → ${von?.name}`, "i");

@@ -7,7 +7,7 @@ function lpListFor(stId) {
 function lpSyncArt(a) {
   save();
   if (typeof sbSaveArtikel === "function") {
-    sbSaveArtikel(a).catch(e => { console.error("sbSaveArtikel", e); toast(LANG==="vi"?"Lỗi lưu lên server":"Fehler beim Speichern auf Server","e"); });
+    sbSaveArtikel(a, {meta:false,sids:[window._lpStId],fields:["lagerort"]}).catch(e => { console.error("sbSaveArtikel", e); toast(LANG==="vi"?"Lỗi lưu lên server":"Fehler beim Speichern auf Server","e"); });
   }
 }
 
