@@ -20,6 +20,8 @@ async function doLogin() {
   if (user) {
     U = user;
     PAGE = can(U.role, "dashboard") ? "dashboard" : "artikel";
+    // Offene Inventur (vor Reload/Browser-Neustart) → direkt dort weiterzählen
+    if (typeof invRestoreDraft === "function" && invRestoreDraft()) PAGE = "inventur";
     if (typeof logActivity === "function") logActivity("login", U.name, { role: U.role });
     render();
     // Đăng ký push notification

@@ -164,19 +164,61 @@ function renderInvTable(arts, stId) {
   return h;
 }
 
-function startInventur() { INV_ACTIVE = true; INV_DATA = {}; render(); toast(`📋 ${LANG==="vi"?"Bắt đầu kiểm kê":"Inventur gestartet"}`,"i"); }
+// ── Zwischenstand (Entwurf) pro Benutzer im Browser sichern ──
+// Ohne das lebt INV_DATA nur im Speicher → Reload/Browser-Neustart = alles weg.
+const INV_DRAFT_KEY = "lager_inv_draft_v1";
+function invDrafts() { try { return JSON.parse(localStorage.getItem(INV_DRAFT_KEY) || "{}") || {}; } catch { return {}; } }
+// Gleiche Standort-Logik wie renderInventur/finishInventur
+function invStId() {
+  const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s => U.standorte.includes(s.id));
+  return STF !== "all" ? STF : (vS[0]?.id || "");
+}
+// Aktiv → Entwurf schreiben, sonst Entwurf des Benutzers löschen
+function invPersist(fresh) {
+  if (!U) return;
+  try {
+    const all = invDrafts();
+    if (INV_ACTIVE) all[U.id] = { stId: invStId(), data: INV_DATA, ts: (!fresh && all[U.id]?.ts) || new Date().toISOString() };
+    else delete all[U.id];
+    localStorage.setItem(INV_DRAFT_KEY, JSON.stringify(all));
+  } catch (e) { console.warn("[Inventur] Entwurf nicht gespeichert:", e); }
+}
+// Nach Login: offenen Entwurf dieses Benutzers wiederherstellen (true = wiederhergestellt)
+function invRestoreDraft() {
+  INV_ACTIVE = false; INV_DATA = {}; // nichts vom vorherigen Benutzer übernehmen
+  if (!U || !can(U.role, "inventur")) return false;
+  const dr = invDrafts()[U.id];
+  if (!dr || !dr.data) return false;
+  const vS = U.standorte.includes("all") ? D.standorte : D.standorte.filter(s => U.standorte.includes(s.id));
+  if (!vS.some(s => s.id === dr.stId)) return false; // kein Zugriff (mehr) auf diesen Standort
+  if (vS.length > 1) STF = dr.stId; // gleichen Standort wie vor dem Neustart zählen
+  INV_ACTIVE = true; INV_DATA = dr.data;
+  const n = Object.keys(INV_DATA).length;
+  setTimeout(() => toast(`📋 ${LANG==="vi"?`Tiếp tục kiểm kê · ${n} SP đã đếm (từ ${fDT(dr.ts)})`:`Inventur fortgesetzt · ${n} gezählt (seit ${fDT(dr.ts)})`}`, "i"), 300);
+  return true;
+}
+
+function startInventur() {
+  INV_ACTIVE = true; INV_DATA = {}; invPersist(true); render();
+  toast(`📋 ${LANG==="vi"?"Bắt đầu kiểm kê":"Inventur gestartet"}`,"i");
+  const stId = invStId();
+  if (typeof logActivity === "function") logActivity("inventur", `Gestartet @ ${D.standorte.find(s=>s.id===stId)?.name||""}`, { phase: "start", standortId: stId });
+}
 
 function invCount(artId, val, stId) {
-  if (val === "" || val === undefined) { delete INV_DATA[artId]; return; }
+  if (val === "" || val === undefined) { delete INV_DATA[artId]; invPersist(); return; }
   const a = D.artikel.find(x=>x.id===artId);
   const sysIst = a?.istBestand[stId] || 0;
   const gezählt = parseInt(val) || 0;
   INV_DATA[artId] = { gezählt, diff: gezählt - sysIst };
+  invPersist();
 }
 
 function cancelInventur() {
   cConfirm(LANG==="vi"?"Hủy kiểm kê? Dữ liệu đếm sẽ bị mất.":"Inventur abbrechen? Zähldaten gehen verloren.", () => {
-    INV_ACTIVE = false; INV_DATA = {}; render();
+    const stId = invStId(), n = Object.keys(INV_DATA).length;
+    INV_ACTIVE = false; INV_DATA = {}; invPersist(); render();
+    if (typeof logActivity === "function") logActivity("inventur", `Abgebrochen @ ${D.standorte.find(s=>s.id===stId)?.name||""} (${n} gezählt)`, { phase: "abbruch", standortId: stId, gezaehlt: n });
   });
 }
 
@@ -223,12 +265,13 @@ function finishInventur() {
     const prot = { id: protId, standortId: stId, datum: nw(), benutzer: U.id, items: invItems };
     if (!D.inventurProtokolle) D.inventurProtokolle = [];
     D.inventurProtokolle.unshift(prot);
-    INV_ACTIVE = false; INV_DATA = {};
+    INV_ACTIVE = false; INV_DATA = {}; invPersist();
     save(); render();
     // Supabase sync: inventur + corrected articles + corrections ledger
     if (typeof sbSaveInventur === "function") sbSaveInventur({ id: prot.id, standortId: prot.standortId, datum: prot.datum, benutzer: prot.benutzer }, prot.items.map(it => ({ artikelId: it.artikelId, gezaehlt: it.gezaehlt, systemBestand: it.system, diff: it.diff }))).catch(e => console.error("sbInv:", e));
     invItems.forEach(it => { if (it.diff !== 0) { const a = D.artikel.find(x => x.id === it.artikelId); if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a).catch(e => console.error("sbArt:", e)); } });
     if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbBew:", e)));
+    if (typeof logActivity === "function") logActivity("inventur", `Abgeschlossen @ ${stName}: ${invItems.length} Artikel gezählt, ${_newBews.length} Korrekturen`, { phase: "abschluss", protokollId: protId, standortId: stId, gezaehlt: invItems.length, korrekturen: _newBews.length });
     const diffLines = diffLog.slice(0,10).map(d => `• ${d.name}: ${d.sysIst}→${d.gezählt} (${d.diff>0?"+":""}${d.diff})`).join("\n");
     sendTG("inventur", `📋 *Inventur abgeschlossen*\n📍 ${stName}\n👤 ${U?.name||"?"}\n${invItems.length} Artikel gezählt\n${diffs.length} Korrekturen\n\n${diffLines}${diffs.length>10?"\n... +"+(diffs.length-10)+" weitere":""}`, stId);
     tgCheckKritisch();
