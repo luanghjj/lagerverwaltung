@@ -812,11 +812,11 @@ function confirmAnforderung(anfId) {
     fillData.forEach(d => {
       if (d.fillQty <= 0 || !d.art) return;
       const qId = d.quelleId;
-      locSetIst(d.art, qId, Math.max(0, d.lagerIst - d.fillQty));
+      const _lo = locSetIst(d.art, qId, Math.max(0, d.lagerIst - d.fillQty));
       if (!_sumByQ[qId]) _sumByQ[qId] = { lines: [], changes: [] };
       _sumByQ[qId].lines.push({a:d.art, menge:d.fillQty});
       _sumByQ[qId].changes.push({a:d.art, alt:d.lagerIst, neu:d.art.istBestand[qId]});
-      const bew = { id: uid(), typ: "ausgang", artikelId: d.artikelId, standortId: qId, menge: d.fillQty, datum: nw(), benutzer: U.id, referenz: `RST-${br?.icon||""}${br?.name||""}`, notiz: `${LANG==="vi"?"Bổ sung":"Auffüllung"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}${d.fillQty<d.angefordert?` (${d.fillQty}/${d.angefordert})`:""}${qId!==anf.standortId?" ← "+esc(D.standorte.find(s=>s.id===qId)?.name||""):""}`, lieferantId: "" };
+      const bew = { lagerort: _lo, id: uid(), typ: "ausgang", artikelId: d.artikelId, standortId: qId, menge: d.fillQty, datum: nw(), benutzer: U.id, referenz: `RST-${br?.icon||""}${br?.name||""}`, notiz: `${LANG==="vi"?"Bổ sung":"Auffüllung"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}${d.fillQty<d.angefordert?` (${d.fillQty}/${d.angefordert})`:""}${qId!==anf.standortId?" ← "+esc(D.standorte.find(s=>s.id===qId)?.name||""):""}`, lieferantId: "" };
       D.bewegungen.unshift(bew);
       _newAufBews.push(bew);
       D.auffuellungen.unshift({ id: uid(), bereichId: anf.bereichId, artikelId: d.artikelId, menge: d.fillQty, datum: nw(), benutzer: U.id, anforderungId: anfId, quelleId: qId });
@@ -858,8 +858,9 @@ function undoAuffuellung(afId) {
       // Zurück an das Lager, aus dem aufgefüllt wurde (nicht das des Bereichs)
       const srcBew = D.bewegungen.find(b => b.typ === "ausgang" && b.artikelId === af.artikelId && (b.referenz||"").startsWith("RST-") && b.datum === af.datum && b.menge === af.menge);
       const stId = af.quelleId || srcBew?.standortId || br?.standortId || D.standorte[0]?.id || "";
-      locSetIst(a, stId, (a.istBestand[stId]||0) + af.menge);
-      _undoBew = { id: uid(), typ: "eingang", artikelId: af.artikelId, standortId: stId, menge: af.menge, datum: nw(), benutzer: U.id, referenz: `UNDO-RST`, notiz: `${LANG==="vi"?"Hoàn tác bổ sung":"Auffüllung rückgängig"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}`, lieferantId: "" };
+      // Zurück an den Lagerort, von dem genommen wurde (falls bekannt und eindeutig)
+      const _lo = locSetIst(a, stId, (a.istBestand[stId]||0) + af.menge, locSingleOrt(srcBew?.lagerort));
+      _undoBew = { lagerort: _lo, id: uid(), typ: "eingang", artikelId: af.artikelId, standortId: stId, menge: af.menge, datum: nw(), benutzer: U.id, referenz: `UNDO-RST`, notiz: `${LANG==="vi"?"Hoàn tác bổ sung":"Auffüllung rückgängig"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}`, lieferantId: "" };
       D.bewegungen.unshift(_undoBew);
     }
     D.auffuellungen = D.auffuellungen.filter(x=>x.id!==afId);

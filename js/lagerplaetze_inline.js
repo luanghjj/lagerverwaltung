@@ -115,14 +115,12 @@ function removeLagerplatz(idx) {
   const lp = lpListFor(stId)[idx];
   if (!lp) return;
   const lpName = lp.name;
-  const affected = D.artikel.filter(a => locHas(a, stId, lpName));
-  const label = LANG==="vi"
-    ? `Xóa "${lpName}"?${affected.length?` ${affected.length} SP sẽ mất vị trí kho.`:""}`
-    : `"${lpName}" löschen?${affected.length?` ${affected.length} Artikel verlieren ihren Lagerort.`:""}`;
-  cConfirm(label, () => {
+  // Betroffene Artikel: Lagerort + Bestand an gewählten Lagerort verschieben (oder Lagerort entfernen)
+  locDeleteDialog(stId, lpName, moves => {
+    const affected = D.artikel.filter(a => locHas(a, stId, lpName));
     D.lagerplaetze = D.lagerplaetze.filter(x => x.id !== lp.id);
     const wasSplit = {};
-    affected.forEach(a => { wasSplit[a.id] = locRename(a, stId, lpName, ""); });
+    affected.forEach(a => { wasSplit[a.id] = locRename(a, stId, lpName, moves[a.id] || ""); });
     save();
     renderLPModal();
     toast("✓","i");

@@ -31,7 +31,7 @@ function renderTransfer(vS, aS) {
       tf.items.forEach((it, i) => {
         const a = D.artikel.find(x=>x.id===it.artId);
         h += `<tr style="border-bottom:1px solid var(--bd)">`;
-        h += `<td style="padding:5px 8px;font-weight:600">${esc(artN(a))}<div style="font-size:9px;color:var(--t3)">${esc(a?.einheit||"")}</div></td>`;
+        h += `<td style="padding:5px 8px;font-weight:600">${esc(artN(a))}<div style="font-size:9px;color:var(--t3)">${esc(a?.einheit||"")}</div>${a ? locSelectHtml(a, tf.nachId, `tf_ort_${tf.id}_${i}`, "", "", "font-size:10.5px;padding:2px 6px;margin-top:2px;max-width:100%") : ""}</td>`;
         h += `<td style="padding:5px 8px;text-align:right;font-family:var(--m);font-weight:600">${it.menge}</td>`;
         h += `<td style="padding:5px 8px;text-align:center"><input class="inp" type="number" min="0" max="${it.menge}" value="${it.menge}" id="tf_emp_${tf.id}_${i}" style="width:65px;text-align:center;padding:5px;font-family:var(--m);font-size:15px;font-weight:700;border:2px solid var(--ac)" onchange="tfCalcDiff('${tf.id}',${i},this.value,${it.menge})"></td>`;
         h += `<td style="padding:5px 8px;text-align:right" id="tf_diff_${tf.id}_${i}"><span style="font-family:var(--m);font-weight:700;color:var(--gn)">0</span></td>`;
@@ -59,7 +59,7 @@ function renderTransfer(vS, aS) {
   stStockCount.sort((a, b) => b.count - a.count);
   const selVon = TF_VON && vS.some(s=>s.id===TF_VON) ? TF_VON : (stStockCount[0]?.id || vS[0]?.id);
   const selNach = TF_NACH && vS.some(s=>s.id===TF_NACH) ? TF_NACH : (vS.find(s => s.id !== selVon)?.id || vS[1]?.id);
-  h += `<div class="g2"><div class="fg"><label>📤 ${LANG==="vi"?"Từ kho":"Von Standort"}</label><select class="sel" id="tf_von" onchange="TF_VON=this.value">${vS.map(s=>`<option value="${s.id}" ${s.id===selVon?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>`;
+  h += `<div class="g2"><div class="fg"><label>📤 ${LANG==="vi"?"Từ kho":"Von Standort"}</label><select class="sel" id="tf_von" onchange="TF_VON=this.value;if(TF_BATCH.length){TF_BATCH.forEach(b=>delete b.ort);render();}">${vS.map(s=>`<option value="${s.id}" ${s.id===selVon?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>`;
   h += `<div class="fg"><label>📥 ${LANG==="vi"?"Đến kho":"Nach Standort"}</label><select class="sel" id="tf_nach" onchange="TF_NACH=this.value">${vS.map(s=>`<option value="${s.id}" ${s.id===selNach?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div></div>`;
 
   h += `<div class="fg"><label>${t("c.article")} ${LANG==="vi"?"tìm":"suchen"}</label><input class="inp" id="tf_search" placeholder="${t("c.search")}" oninput="tfSearch(this.value)"></div>`;
@@ -70,7 +70,8 @@ function renderTransfer(vS, aS) {
     h += `<h3 style="font-size:12px;font-weight:700;margin:8px 0 4px">${TF_BATCH.length} ${t("c.article")}</h3>`;
     TF_BATCH.forEach((b,i) => {
       const a = D.artikel.find(x=>x.id===b.artId);
-      h += `<div class="batch-item"><div style="flex:1"><div style="font-weight:600;font-size:12px">${esc(artN(a))}</div><div style="font-size:10px;color:var(--t2)">${esc(a?.sku||"")}</div></div><input class="inp" type="number" min="1" value="${b.menge}" onchange="TF_BATCH[${i}].menge=parseInt(this.value)||1" style="width:60px;text-align:center;font-family:var(--m);font-weight:700"><span style="font-size:11px;color:var(--t3);min-width:30px">${esc(a?.einheit||"")}</span><button class="bi dn" onclick="TF_BATCH.splice(${i},1);render()">✕</button></div>`;
+      const ortSel = a ? locSelectHtml(a, selVon, `tfort_${i}`, b.ort, `TF_BATCH[${i}].ort=this.value`, "font-size:10.5px;padding:2px 6px;margin-top:2px;max-width:100%") : "";
+      h += `<div class="batch-item"><div style="flex:1"><div style="font-weight:600;font-size:12px">${esc(artN(a))}</div><div style="font-size:10px;color:var(--t2)">${esc(a?.sku||"")}</div>${ortSel}</div><input class="inp" type="number" min="1" value="${b.menge}" onchange="TF_BATCH[${i}].menge=parseInt(this.value)||1" style="width:60px;text-align:center;font-family:var(--m);font-weight:700"><span style="font-size:11px;color:var(--t3);min-width:30px">${esc(a?.einheit||"")}</span><button class="bi dn" onclick="TF_BATCH.splice(${i},1);render()">✕</button></div>`;
     });
     h += `<button class="btn btn-p" onclick="execTransfer()" style="margin-top:8px">📤 ${LANG==="vi"?"Absenden":"Transfer senden"} (${TF_BATCH.length})</button>`;
   }
@@ -252,11 +253,11 @@ function execTransfer() {
       const qty = Math.min(b.menge, vonIst);
       if (qty <= 0) return;
       // Deduct from source immediately
-      locSetIst(a, vonId, vonIst - qty);
+      const _lo = locSetIst(a, vonId, vonIst - qty, b.ort);
       _sumLines.push({a, menge:qty});
       _sumChanges.push({a, alt:vonIst, neu:a.istBestand[vonId]});
-      D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:b.artId, standortId:vonId, zielStandortId:nachId, menge:qty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"" });
-      items.push({ artId: b.artId, menge: qty });
+      D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:b.artId, standortId:vonId, zielStandortId:nachId, menge:qty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"", lagerort:_lo });
+      items.push({ artId: b.artId, menge: qty, ort: locSingleOrt(_lo) });
     });
     if (items.length) {
       D.transfers.unshift({ id:uid(), vonId, nachId, items, status:"unterwegs", datum:nw(), benutzer:U.id });
@@ -317,6 +318,15 @@ function tfQuickAcceptAll(tfId, itemCount) {
   confirmTransfer(tfId, itemCount);
 }
 
+// Lagerort am Quell-Standort, von dem gesendet wurde (für Rückbuchungen). Nach dem Neuladen aus der Umbuchungs-Bewegung.
+function tfVonOrt(tf, artId) {
+  const it = tf.items.find(x => x.artId === artId);
+  if (it?.ort) return it.ort;
+  const t0 = new Date(tf.datum).getTime();
+  const bew = D.bewegungen.find(b => b.typ === "umbuchung" && b.artikelId === artId && b.standortId === tf.vonId && b.zielStandortId === tf.nachId && Math.abs(new Date(b.datum).getTime() - t0) < 60000);
+  return locSingleOrt(bew?.lagerort);
+}
+
 function confirmTransfer(tfId, itemCount) {
   const tf = (D.transfers||[]).find(x=>x.id===tfId);
   if (!tf || tf.status !== "unterwegs") return;
@@ -331,7 +341,7 @@ function confirmTransfer(tfId, itemCount) {
     const empQty = Math.max(0, parseInt(inp?.value) || 0);
     const diff = empQty - it.menge;
     if (diff !== 0) hasDiff = true;
-    empfangen.push({ artId: it.artId, gesendet: it.menge, empfangen: empQty, diff });
+    empfangen.push({ artId: it.artId, gesendet: it.menge, empfangen: empQty, diff, ort: document.getElementById(`tf_ort_${tfId}_${i}`)?.value || "" });
   });
 
   const fehlList = empfangen.filter(e => e.diff < 0);
@@ -357,10 +367,10 @@ function confirmTransfer(tfId, itemCount) {
       // Book received qty at target
       if (e.empfangen > 0) {
         const alt = a.istBestand[tf.nachId]||0;
-        locSetIst(a, tf.nachId, (a.istBestand[tf.nachId]||0) + e.empfangen);
+        const _lo = locSetIst(a, tf.nachId, (a.istBestand[tf.nachId]||0) + e.empfangen, e.ort);
         _sumLines.push({a, menge:e.empfangen});
         _sumChanges.push({a, alt, neu:a.istBestand[tf.nachId]});
-        const bew = { id:uid(), typ:"eingang", artikelId:e.artId, standortId:tf.nachId, menge:e.empfangen, datum:nw(), benutzer:U.id, referenz:`UB←${von?.name}`, notiz:`Transfer ${von?.name}→${nach?.name}`, lieferantId:"" };
+        const bew = { id:uid(), typ:"eingang", artikelId:e.artId, standortId:tf.nachId, menge:e.empfangen, datum:nw(), benutzer:U.id, referenz:`UB←${von?.name}`, notiz:`Transfer ${von?.name}→${nach?.name}`, lieferantId:"", lagerort:_lo };
         D.bewegungen.unshift(bew);
         _newBews.push(bew);
       }
@@ -368,9 +378,9 @@ function confirmTransfer(tfId, itemCount) {
       // Return shortage to source
       if (e.diff < 0) {
         const fehlMenge = Math.abs(e.diff);
-        locSetIst(a, tf.vonId, (a.istBestand[tf.vonId]||0) + fehlMenge);
+        const _lo = locSetIst(a, tf.vonId, (a.istBestand[tf.vonId]||0) + fehlMenge, tfVonOrt(tf, e.artId));
         _sumExtra.push(`•  ${artN(a)}: ${LANG==="vi"?"thiếu, trả lại":"Fehlmenge zurück an"} ${von?.name||""} +${fmtQtyUnit(fehlMenge, a)}`);
-        const bew = { id:uid(), typ:"korrektur_plus", artikelId:e.artId, standortId:tf.vonId, menge:fehlMenge, datum:nw(), benutzer:U.id, referenz:`UB↩ Fehl`, notiz:`Fehlmenge Transfer→${nach?.name}: ${e.gesendet} gesendet, ${e.empfangen} empfangen`, lieferantId:"" };
+        const bew = { lagerort:_lo, id:uid(), typ:"korrektur_plus", artikelId:e.artId, standortId:tf.vonId, menge:fehlMenge, datum:nw(), benutzer:U.id, referenz:`UB↩ Fehl`, notiz:`Fehlmenge Transfer→${nach?.name}: ${e.gesendet} gesendet, ${e.empfangen} empfangen`, lieferantId:"" };
         D.bewegungen.unshift(bew);
         _newBews.push(bew);
       }
@@ -412,8 +422,8 @@ function rejectTransfer(tfId) {
     tf.items.forEach(it => {
       const a = D.artikel.find(x=>x.id===it.artId);
       if (!a) return;
-      locSetIst(a, tf.vonId, (a.istBestand[tf.vonId]||0) + it.menge);
-      const bew = { id:uid(), typ:"korrektur_plus", artikelId:it.artId, standortId:tf.vonId, menge:it.menge, datum:nw(), benutzer:U.id, referenz:"UB↩", notiz:`Transfer komplett zurückgewiesen`, lieferantId:"" };
+      const _lo = locSetIst(a, tf.vonId, (a.istBestand[tf.vonId]||0) + it.menge, tfVonOrt(tf, it.artId));
+      const bew = { lagerort:_lo, id:uid(), typ:"korrektur_plus", artikelId:it.artId, standortId:tf.vonId, menge:it.menge, datum:nw(), benutzer:U.id, referenz:"UB↩", notiz:`Transfer komplett zurückgewiesen`, lieferantId:"" };
       D.bewegungen.unshift(bew);
       _newBews.push(bew);
     });
@@ -446,7 +456,7 @@ function getBewExportData() {
     const wert = (al?.preis||0) * b.menge;
     return {
       datum: b.datum, typ: bt.s, artikel: artN(a), sku: a?.sku||"", einheit: a?.einheit||"",
-      standort: s?.name||"", zielStandort: ziel?.name||"", lagerort: a?.lagerort?.[b.standortId]||"",
+      standort: s?.name||"", zielStandort: ziel?.name||"", lagerort: b.lagerort||a?.lagerort?.[b.standortId]||"",
       menge: b.menge, wert, referenz: b.referenz||"", notiz: b.notiz||"", benutzer: usr?.name||""
     };
   });

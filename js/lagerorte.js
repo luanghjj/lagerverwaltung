@@ -79,14 +79,28 @@ function locStore(a, sid, rows) {
 
 // IST am Standort auf `neu` setzen. Bei mehreren Lagerorten geht die Differenz an Lagerort `ort`
 // (Standard: erster); ein Abgang, der dort nicht reicht, wird von den nächsten Lagerorten abgezogen.
+// Rückgabe: betroffene Lagerorte für die Bewegung, z.B. "Restaurant" oder "Restaurant 3 · Lager 01 2".
 function locSetIst(a, sid, neu, ort) {
   a.istBestand = a.istBestand || {};
   const rows = locRows(a, sid);
-  if (rows.length < 2) { a.istBestand[sid] = neu; return; }
+  if (rows.length < 2) { a.istBestand[sid] = neu; return rows[0].ort; }
   let i = ort ? rows.findIndex(r => r.ort === ort) : 0;
   if (i < 0) i = 0;
+  const before = rows.map(r => r.ist);
   locShift(rows, "ist", _locNum(neu) - _locSum(rows, "ist"), i);
   locStore(a, sid, rows);
+  // ab dem gewählten Lagerort aufführen (gleiche Reihenfolge wie beim Abziehen)
+  const moved = rows.map((_, k) => (i + k) % rows.length)
+    .map(k => ({ ort: rows[k].ort || "—", d: Math.abs(rows[k].ist - before[k]) })).filter(x => x.d);
+  if (moved.length < 2) return moved[0]?.ort || rows[i].ort;
+  return moved.map(x => `${x.ort} ${x.d}`).join(" · ");
+}
+
+// Lagerort aus dem Text einer Bewegung ("Restaurant" bzw. "Restaurant 3 · Lager 01 2" → "Restaurant"),
+// z.B. um eine Rückbuchung an den Lagerort zu buchen, von dem genommen wurde
+function locSingleOrt(txt) {
+  const first = String(txt || "").split(" · ")[0];
+  return String(txt || "").includes(" · ") ? first.replace(/ -?\d+$/, "") : first;
 }
 
 // Lagerort umbenennen ("" = entfernen, Mengen bleiben). Gibt zurück, ob der Artikel vorher mehrere Lagerorte hatte.
@@ -110,4 +124,44 @@ function locSelectHtml(a, sid, id, cur, onchange, style) {
   if (rows.length < 2) return "";
   const sel = rows.some(r => r.ort === cur) ? cur : rows[0].ort;
   return `<select class="sel" id="${id}" ${onchange ? `onchange="${onchange}"` : ""} onclick="event.stopPropagation()" style="${style || "font-size:11px;padding:3px 6px"}">${rows.map(r => `<option value="${esc(r.ort)}" ${r.ort === sel ? "selected" : ""}>📦 ${esc(r.ort || "—")} (${r.ist})</option>`).join("")}</select>`;
+}
+
+// Lagerplatz löschen: betroffene Artikel auflisten, je Artikel wählen, wohin Lagerort + Bestand wandern.
+// Standard: anderer Lagerort des Artikels (bei mehreren), sonst "kein Lagerort" (wie bisher).
+// onYes(moves) mit moves[artId] = Ziel-Lagerort ("" = keiner)
+function locDeleteDialog(sid, name, onYes) {
+  const vi = LANG === "vi";
+  const affected = D.artikel.filter(a => locHas(a, sid, name));
+  const title = `${vi ? "Xóa" : "Löschen"}: ${name}?`;
+  if (!affected.length) return cConfirm(title, () => onYes({}));
+  const others = (D.lagerplaetze || []).filter(lp => lp.standortId === sid && lp.name !== name).map(lp => lp.name);
+  let h = `<div class="mo-ov" id="locDelOv" style="z-index:300"><div class="mo" style="max-width:520px" onclick="event.stopPropagation()"><div class="mo-b" style="padding:18px">`;
+  h += `<div style="font-size:14px;font-weight:700;margin-bottom:4px">⚠ ${esc(title)}</div>`;
+  h += `<div style="font-size:11.5px;color:var(--t2);margin-bottom:10px">${affected.length} ${t("c.article")} ${vi ? "đang ở đây. Chọn nơi chuyển hàng sang (tổng Kho không đổi):" : "liegen hier. Wohin sollen sie samt Bestand (Standort-Summe bleibt gleich)?"}</div>`;
+  h += `<div style="max-height:50vh;overflow:auto">`;
+  affected.forEach((a, i) => {
+    const rows = locRows(a, sid);
+    const r = rows.find(x => x.ort === name);
+    const rest = rows.filter(x => x.ort !== name && x.ort).map(x => x.ort);
+    const opts = [...new Set([...rest, ...others])];
+    const def = rest[0] || "";
+    h += `<div style="display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd)">`;
+    h += `<div style="flex:1;min-width:0;font-size:12px;font-weight:600">${esc(artN(a))}<div style="font-size:10px;color:var(--t3);font-weight:400">${vi ? "Tồn" : "Bestand"}: ${r?.ist || 0} ${esc(a.einheit || "")}</div></div>`;
+    h += `<select class="sel" id="locDel_${i}" style="flex:1;min-width:0;font-size:11.5px">`;
+    if (rows.length < 2 || !opts.length) h += `<option value="" ${def ? "" : "selected"}>— ${vi ? "Không có Lagerort" : "Kein Lagerort"}</option>`;
+    h += opts.map(o => `<option value="${esc(o)}" ${o === def ? "selected" : ""}>→ 📦 ${esc(o)}${rest.includes(o) ? " ✓" : ""}</option>`).join("");
+    h += `</select></div>`;
+  });
+  h += `</div><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:12px"><button class="btn btn-o" id="locDelNo">${t("c.cancel")}</button><button class="btn btn-d" id="locDelYes">${vi ? "Xóa & chuyển" : "Löschen & verschieben"}</button></div>`;
+  h += `</div></div></div>`;
+  document.body.insertAdjacentHTML("beforeend", h);
+  const close = () => document.getElementById("locDelOv")?.remove();
+  document.getElementById("locDelNo").onclick = close;
+  document.getElementById("locDelOv").onclick = close;
+  document.getElementById("locDelYes").onclick = () => {
+    const moves = {};
+    affected.forEach((a, i) => { moves[a.id] = document.getElementById(`locDel_${i}`)?.value || ""; });
+    close();
+    onYes(moves);
+  };
 }

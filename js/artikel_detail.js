@@ -152,8 +152,8 @@ function addInterTransfer(artId, vonStId) {
       : `${actualQty} ${a?.einheit} ${artN(a)} von ${vonName} → ${nachName} umbuchen?`,
     () => {
       if (!D.transfers) D.transfers = [];
-      locSetIst(a, vonStId, vonIst - actualQty);
-      D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:artId, standortId:vonStId, zielStandortId:nachStId, menge:actualQty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"" });
+      const _lo = locSetIst(a, vonStId, vonIst - actualQty);
+      D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:artId, standortId:vonStId, zielStandortId:nachStId, menge:actualQty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"", lagerort:_lo });
       D.transfers.unshift({ id:uid(), vonId:vonStId, nachId:nachStId, items:[{artId,menge:actualQty}], status:"unterwegs", datum:nw(), benutzer:U.id });
       save(); closeModal(); render();
       // Supabase sync (fehlte: Umbuchung ging beim Neuladen verloren)
@@ -707,8 +707,8 @@ function quickBook(artId, stId, typ, menge) {
   const ist = a.istBestand[stId] || 0;
   if (!isE && ist < menge) { toast(LANG==="vi"?"Không đủ hàng":"Kein Bestand","e"); return; }
   const ort = document.getElementById(`qbort_${stId}`)?.value || "";
-  locSetIst(a, stId, isE ? ist + menge : Math.max(0, ist - menge), ort);
-  const _qbBew = { id:uid(), typ, artikelId:artId, standortId:stId, menge, datum:nw(), benutzer:U.id, referenz:"QUICK", notiz:"", lieferantId:"" };
+  const _lo = locSetIst(a, stId, isE ? ist + menge : Math.max(0, ist - menge), ort);
+  const _qbBew = { id:uid(), typ, artikelId:artId, standortId:stId, menge, datum:nw(), benutzer:U.id, referenz:"QUICK", notiz:"", lieferantId:"", lagerort:_lo };
   D.bewegungen.unshift(_qbBew);
   save();
   if (typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:["ist"]}).catch(e=>console.error("sbArt:",e));

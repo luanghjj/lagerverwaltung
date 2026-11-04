@@ -160,15 +160,11 @@ function saveLagerplatz(id, isEdit) {
 function delLagerplatz(id) {
   const lp = D.lagerplaetze.find(x=>x.id===id);
   if (!lp) return;
-  const artCount = D.artikel.filter(a => locHas(a, lp.standortId, lp.name)).length;
-  let label = `${LANG==="vi"?"Xóa":"Löschen"}: ${lp.name}?`;
-  if (artCount) label += `\n\n⚠ ${artCount} ${t("c.article")} ${LANG==="vi"?"đang được gán — sẽ bị xóa Lagerort":"zugeordnet — Lagerort wird entfernt"}`;
-
-  cConfirm(label, () => {
-    // Remove lagerort from articles
+  // Betroffene Artikel: Lagerort + Bestand an gewählten Lagerort verschieben (oder Lagerort entfernen)
+  locDeleteDialog(lp.standortId, lp.name, moves => {
     const affected = D.artikel.filter(a => locHas(a, lp.standortId, lp.name));
     const wasSplit = {};
-    affected.forEach(a => { wasSplit[a.id] = locRename(a, lp.standortId, lp.name, ""); });
+    affected.forEach(a => { wasSplit[a.id] = locRename(a, lp.standortId, lp.name, moves[a.id] || ""); });
     // Remove from standort array
     const st = D.standorte.find(s=>s.id===lp.standortId);
     if (st?.lagerplaetze) st.lagerplaetze = st.lagerplaetze.filter(n=>n!==lp.name);

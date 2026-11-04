@@ -262,12 +262,13 @@ function buchenAlle(typ) {
 
   const _sumLines = [], _sumChanges = [];
   BATCH.forEach(b => {
-    D.bewegungen.unshift({id:uid(),typ,artikelId:b.artikelId,standortId:stId,menge:b.menge,datum:nw(),benutzer:U.id,referenz:ref,notiz:b.notiz||grund,lieferantId:lief});
+    const _bew = {id:uid(),typ,artikelId:b.artikelId,standortId:stId,menge:b.menge,datum:nw(),benutzer:U.id,referenz:ref,notiz:b.notiz||grund,lieferantId:lief,lagerort:""};
+    D.bewegungen.unshift(_bew);
     const a = D.artikel.find(x=>x.id===b.artikelId);
     if (a) {
       const alt = a.istBestand[stId]||0;
       // Bei mehreren Lagerorten: am gewählten Lagerort; Ausgang, der dort nicht reicht, vom nächsten Lagerort
-      locSetIst(a, stId, isE ? alt + b.menge : Math.max(0, alt - b.menge), b.ort);
+      _bew.lagerort = locSetIst(a, stId, isE ? alt + b.menge : Math.max(0, alt - b.menge), b.ort);
       _sumLines.push({a, menge:b.menge});
       _sumChanges.push({a, alt, neu:a.istBestand[stId]});
     }
@@ -347,7 +348,7 @@ function renderBewegungen(vS, aS) {
   if (q) {
     bew = bew.filter(b => {
       const a = D.artikel.find(x=>x.id===b.artikelId);
-      return norm(a?.name).includes(q) || norm(a?.name_vi).includes(q) || norm(a?.sku).includes(q) || (b.referenz||"").toLowerCase().includes(q) || (b.notiz||"").toLowerCase().includes(q);
+      return norm(a?.name).includes(q) || norm(a?.name_vi).includes(q) || norm(a?.sku).includes(q) || (b.referenz||"").toLowerCase().includes(q) || (b.notiz||"").toLowerCase().includes(q) || norm(b.lagerort).includes(q);
     });
     h += `<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${bew.length} ${LANG==="vi"?"kết quả cho":"Ergebnis(se) für"} „${esc(BWG_SEARCH)}"</div>`;
   } else {
@@ -366,7 +367,8 @@ function renderBewegungen(vS, aS) {
       const s = D.standorte.find(x=>x.id===b.standortId);
       let key;
       if (BWG_GROUP === "standort") key = s?.name || "—";
-      else if (BWG_GROUP === "lagerort") key = a?.lagerort?.[b.standortId] || "—";
+      // gebuchter Lagerort (ältere Bewegungen ohne: aktueller erster Lagerort des Artikels)
+      else if (BWG_GROUP === "lagerort") key = (b.lagerort ? locSingleOrt(b.lagerort) : a?.lagerort?.[b.standortId]) || "—";
       else if (BWG_GROUP === "referenz") key = b.referenz || "—";
       else key = "—";
       if (!groups[key]) groups[key] = [];
@@ -398,7 +400,7 @@ function renderBewTable(bew) {
     const bt=BT[b.typ]||{s:"?",c:"#666",i:"?"};const a=D.artikel.find(x=>x.id===b.artikelId);const s=D.standorte.find(x=>x.id===b.standortId);const usr=D.users.find(x=>x.id===b.benutzer);
     const plus=["eingang","korrektur_plus"].includes(b.typ);const minus=["ausgang","korrektur_minus"].includes(b.typ);
     const conv = a ? formatUnitConv(b.menge,a) : "";
-    h += `<tr><td style="font-family:var(--m);font-size:9.5px">${fDT(b.datum)}</td><td><span class="bwt" style="background:${bt.c}18;color:${bt.c}">${bt.i} ${bt.s}</span></td><td><div class="th" style="width:24px;height:24px">${a?.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div></td><td style="font-weight:600;cursor:pointer" onclick="showArtikelDetail('${b.artikelId}')">${esc(artN(a))}</td><td>${esc(s?.name||"")}${b.zielStandortId?` → ${esc(D.standorte.find(x=>x.id===b.zielStandortId)?.name||"")}`:""}</td><td class="mob-hide"><span class="loc-tag" style="font-size:9px">${esc(a?.lagerort?.[b.standortId]||"—")}</span></td><td style="font-family:var(--m);font-weight:700;color:${plus?"var(--gn)":minus?"var(--rd)":"var(--pu)"}">${plus?"+":minus?"−":"⇄"}${b.menge}${conv?`<span class="unit-conv"> = ${esc(conv)}</span>`:""}</td><td class="mob-hide" style="font-family:var(--m);font-size:9.5px;color:var(--t2)">${esc(b.referenz||"—")}</td><td class="mob-hide" style="font-size:10.5px">${usr?esc(usr.name):""}</td><td class="mob-hide" style="color:var(--t3);font-size:10.5px;max-width:150px;word-break:break-word;white-space:normal">${esc(b.notiz||"")}</td></tr>`;
+    h += `<tr><td style="font-family:var(--m);font-size:9.5px">${fDT(b.datum)}</td><td><span class="bwt" style="background:${bt.c}18;color:${bt.c}">${bt.i} ${bt.s}</span></td><td><div class="th" style="width:24px;height:24px">${a?.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div></td><td style="font-weight:600;cursor:pointer" onclick="showArtikelDetail('${b.artikelId}')">${esc(artN(a))}</td><td>${esc(s?.name||"")}${b.zielStandortId?` → ${esc(D.standorte.find(x=>x.id===b.zielStandortId)?.name||"")}`:""}</td><td class="mob-hide"><span class="loc-tag" style="font-size:9px">${esc(b.lagerort||a?.lagerort?.[b.standortId]||"—")}</span></td><td style="font-family:var(--m);font-weight:700;color:${plus?"var(--gn)":minus?"var(--rd)":"var(--pu)"}">${plus?"+":minus?"−":"⇄"}${b.menge}${conv?`<span class="unit-conv"> = ${esc(conv)}</span>`:""}</td><td class="mob-hide" style="font-family:var(--m);font-size:9.5px;color:var(--t2)">${esc(b.referenz||"—")}</td><td class="mob-hide" style="font-size:10.5px">${usr?esc(usr.name):""}</td><td class="mob-hide" style="color:var(--t3);font-size:10.5px;max-width:150px;word-break:break-word;white-space:normal">${esc(b.notiz||"")}</td></tr>`;
   });
   if (!bew.length) h += `<tr><td colspan="10" style="text-align:center;color:var(--t3);padding:16px">—</td></tr>`;
   h += `</tbody></table></div>`;
@@ -410,7 +412,7 @@ function renderBewTable(bew) {
     const plus=["eingang","korrektur_plus"].includes(b.typ);const minus=["ausgang","korrektur_minus"].includes(b.typ);
     h += `<div class="cd" style="padding:8px 10px;border-left:3px solid ${bt.c};cursor:pointer" onclick="showArtikelDetail('${b.artikelId}')">`;
     h += `<div style="display:flex;justify-content:space-between;align-items:center">`;
-    h += `<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0"><div class="th" style="width:28px;height:28px">${a?.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div style="min-width:0"><div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(artN(a))}</div><div style="font-size:9.5px;color:var(--t3)">${b.datum?.slice(5,10)} ${b.datum?.slice(11,16)} · ${esc(s?.name||"")}${usr?" · "+esc(usr.name):""}</div></div></div>`;
+    h += `<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0"><div class="th" style="width:28px;height:28px">${a?.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div style="min-width:0"><div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(artN(a))}</div><div style="font-size:9.5px;color:var(--t3)">${b.datum?.slice(5,10)} ${b.datum?.slice(11,16)} · ${esc(s?.name||"")}${b.lagerort?" · 📦 "+esc(b.lagerort):""}${usr?" · "+esc(usr.name):""}</div></div></div>`;
     h += `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span class="bwt" style="background:${bt.c}18;color:${bt.c};font-size:9.5px">${bt.i}${bt.s}</span><span style="font-family:var(--m);font-weight:700;font-size:14px;color:${plus?"var(--gn)":minus?"var(--rd)":"var(--pu)"}">${plus?"+":minus?"−":"⇄"}${b.menge}</span></div>`;
     h += `</div></div>`;
   });

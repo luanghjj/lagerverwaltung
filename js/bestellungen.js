@@ -228,8 +228,8 @@ function bestConfirmOne(id) {
     b.status = "geliefert";
     b.empfangen = empfangen;
     if (a && empfangen > 0) {
-      locSetIst(a, b.standortId, (a.istBestand[b.standortId]||0) + empfangen);
-      D.bewegungen.unshift({id:uid(),typ:"eingang",artikelId:b.artikelId,standortId:b.standortId,menge:empfangen,datum:nw(),benutzer:U.id,referenz:`B-${b.id}`,notiz:diff<0?`Fehlmenge: ${b.menge} bestellt, ${empfangen} empfangen`:diff>0?`Mehrlieferung: +${diff}`:"",lieferantId:b.lieferantId});
+      const _lo = locSetIst(a, b.standortId, (a.istBestand[b.standortId]||0) + empfangen);
+      D.bewegungen.unshift({id:uid(),typ:"eingang",artikelId:b.artikelId,standortId:b.standortId,menge:empfangen,datum:nw(),benutzer:U.id,referenz:`B-${b.id}`,notiz:diff<0?`Fehlmenge: ${b.menge} bestellt, ${empfangen} empfangen`:diff>0?`Mehrlieferung: +${diff}`:"",lieferantId:b.lieferantId,lagerort:_lo});
     }
     if (diff < 0) {
       b.fehlmenge = Math.abs(diff);
@@ -273,8 +273,8 @@ function bestConfirmAll(liefKey) {
       d.b.status = "geliefert";
       d.b.empfangen = d.empfangen;
       if (d.a && d.empfangen > 0) {
-        locSetIst(d.a, d.b.standortId, (d.a.istBestand[d.b.standortId]||0) + d.empfangen);
-        D.bewegungen.unshift({id:uid(),typ:"eingang",artikelId:d.b.artikelId,standortId:d.b.standortId,menge:d.empfangen,datum:nw(),benutzer:U.id,referenz:`B-${d.b.id}`,notiz:d.diff<0?`Fehlmenge: ${d.b.menge} bestellt, ${d.empfangen} empfangen`:d.diff>0?`Mehrlieferung: +${d.diff}`:"",lieferantId:d.b.lieferantId});
+        const _lo = locSetIst(d.a, d.b.standortId, (d.a.istBestand[d.b.standortId]||0) + d.empfangen);
+        D.bewegungen.unshift({lagerort:_lo,id:uid(),typ:"eingang",artikelId:d.b.artikelId,standortId:d.b.standortId,menge:d.empfangen,datum:nw(),benutzer:U.id,referenz:`B-${d.b.id}`,notiz:d.diff<0?`Fehlmenge: ${d.b.menge} bestellt, ${d.empfangen} empfangen`:d.diff>0?`Mehrlieferung: +${d.diff}`:"",lieferantId:d.b.lieferantId});
         count++;
       }
       if (d.diff < 0) d.b.fehlmenge = Math.abs(d.diff);

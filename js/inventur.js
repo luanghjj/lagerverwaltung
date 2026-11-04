@@ -10,6 +10,28 @@ function invSearchKey(e) {
     }, 50);
   }
 }
+// ── Zählzeilen ──
+// SP mit 1 Lagerort: 1 Zeile, Schlüssel = artId (wie bisher, alte Entwürfe bleiben gültig).
+// SP mit mehreren Lagerorten: 1 Zeile je Lagerort, Schlüssel = artId@@Lagerort → je Lagerort zählen.
+const INV_SEP = "@@";
+function invEntries(arts, stId) {
+  const out = [];
+  arts.forEach(a => {
+    const rows = locRows(a, stId);
+    if (rows.length < 2) out.push({ a, key: a.id, ort: rows[0].ort, sys: rows[0].ist, split: false });
+    else rows.forEach(r => out.push({ a, key: a.id + INV_SEP + r.ort, ort: r.ort, sys: r.ist, split: true }));
+  });
+  return out;
+}
+// Aktueller System-Bestand zu einem Schlüssel (Standort gesamt bzw. ein Lagerort)
+function invSys(key, stId) {
+  const [artId, ort] = key.split(INV_SEP);
+  const a = D.artikel.find(x => x.id === artId);
+  if (!a) return 0;
+  if (ort === undefined) return a.istBestand[stId] || 0;
+  return locRows(a, stId).find(r => r.ort === ort)?.ist || 0;
+}
+
 function renderInventur(vS, aS) {
   const stId = aS || vS[0]?.id || "";
   const stName = D.standorte.find(s=>s.id===stId)?.name || "";
@@ -19,7 +41,7 @@ function renderInventur(vS, aS) {
     h += `<button class="btn btn-p" onclick="startInventur()">▶ ${LANG==="vi"?"Bắt đầu kiểm kê":"Inventur starten"}</button>`;
   } else {
     const counted = Object.keys(INV_DATA).length;
-    const total = D.artikel.length;
+    const total = invEntries(D.artikel, stId).length;
     h += `<span class="bp" style="background:var(--gA);color:var(--gn)">${counted}/${total}</span>`;
     h += `<button class="btn btn-g" onclick="finishInventur()">✓ ${LANG==="vi"?"Hoàn thành":"Abschließen"}</button>`;
     h += `<button class="btn btn-d btn-sm" onclick="cancelInventur()">✕</button>`;
@@ -51,10 +73,10 @@ function renderInventur(vS, aS) {
     h += `<div style="font-size:11px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--b3);border-radius:6px">📍 ${esc(stName)} — ${LANG==="vi"?"Nhập số lượng thực tế đếm được":"Gezählte Menge eingeben"}</div>`;
 
     // Progress bar
-    const totalArts = D.artikel.length;
+    const totalArts = invEntries(D.artikel, stId).length;
     const countedArts = Object.keys(INV_DATA).filter(k => INV_DATA[k]?.gezählt !== undefined).length;
-    const pctDone = totalArts > 0 ? Math.round(countedArts / totalArts * 100) : 0;
-    const diffCount = Object.entries(INV_DATA).filter(([artId, v]) => { const a = D.artikel.find(x=>x.id===artId); return v.gezählt !== undefined && v.gezählt !== (a?.istBestand[stId]||0); }).length;
+    const pctDone = totalArts > 0 ? Math.min(100, Math.round(countedArts / totalArts * 100)) : 0;
+    const diffCount = Object.entries(INV_DATA).filter(([k, v]) => v.gezählt !== undefined && v.gezählt !== invSys(k, stId)).length;
     h += `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:600;margin-bottom:3px"><span style="color:var(--ac)">${countedArts}/${totalArts} ${LANG==="vi"?"đã đếm":"gezählt"} (${pctDone}%)</span><span style="color:${diffCount?"var(--rd)":"var(--gn)"}">${diffCount} ${LANG==="vi"?"chênh lệch":"Differenzen"}</span></div><div class="stk-b" style="height:6px"><div class="stk-f" style="width:${pctDone}%;background:${pctDone===100?"var(--gn)":"var(--ac)"}"></div></div></div>`;
 
     // Search bar
@@ -91,21 +113,26 @@ function renderInventur(vS, aS) {
       }
     }
 
+    // Zählzeilen (SP mit mehreren Lagerorten → eine Zeile je Lagerort)
+    const ents = invEntries(arts, stId);
+
     // Sort
-    arts.sort((a, b) => {
-      if (INV_SORT === "lagerort") return (a.lagerort?.[stId]||"zzz").localeCompare(b.lagerort?.[stId]||"zzz") || artN(a).localeCompare(artN(b));
-      if (INV_SORT === "name") return artN(a).localeCompare(artN(b));
-      if (INV_SORT === "status") { const aD=INV_DATA[a.id]?.gezählt!==undefined?1:0; const bD=INV_DATA[b.id]?.gezählt!==undefined?1:0; return aD-bD || artN(a).localeCompare(artN(b)); }
+    ents.sort((x, y) => {
+      const a = x.a, b = y.a;
+      if (INV_SORT === "lagerort") return (x.ort||"zzz").localeCompare(y.ort||"zzz") || artN(a).localeCompare(artN(b));
+      if (INV_SORT === "name") return artN(a).localeCompare(artN(b)) || (x.ort||"").localeCompare(y.ort||"");
+      if (INV_SORT === "status") { const aD=INV_DATA[x.key]?.gezählt!==undefined?1:0; const bD=INV_DATA[y.key]?.gezählt!==undefined?1:0; return aD-bD || artN(a).localeCompare(artN(b)); }
       return 0;
     });
 
     // Group
     if (INV_GROUP !== "none") {
       const groups = {};
-      arts.forEach(a => {
+      ents.forEach(e => {
+        const a = e.a;
         let key, label, color;
         if (INV_GROUP === "lagerort") {
-          key = a.lagerort?.[stId] || "—";
+          key = e.ort || "—";
           label = key;
           color = "var(--ac)";
         } else {
@@ -115,24 +142,24 @@ function renderInventur(vS, aS) {
           color = kat?.farbe || "var(--t3)";
         }
         if (!groups[key]) groups[key] = { label, color, items: [] };
-        groups[key].items.push(a);
+        groups[key].items.push(e);
       });
 
       for (const [gKey, g] of Object.entries(groups)) {
-        const gCounted = g.items.filter(a => INV_DATA[a.id]?.gezählt !== undefined).length;
+        const gCounted = g.items.filter(e => INV_DATA[e.key]?.gezählt !== undefined).length;
         h += `<div style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:5px 8px;background:var(--b3);border-radius:6px;border-left:3px solid ${g.color}"><span style="font-weight:700;font-size:12px">${INV_GROUP==="lagerort"?"📦 ":"🏷 "}${esc(g.label)}</span><span style="font-size:10px;color:var(--t3)">${gCounted}/${g.items.length}</span></div>`;
         h += renderInvTable(g.items, stId);
         h += `</div>`;
       }
     } else {
-      h += renderInvTable(arts, stId);
+      h += renderInvTable(ents, stId);
     }
 
     // Summary
     const counted = Object.keys(INV_DATA).length;
     const diffs = Object.entries(INV_DATA).filter(([,v])=>v.diff!==0);
     h += `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">`;
-    h += `<span class="bp" style="background:var(--aA);color:var(--ac)">${counted}/${D.artikel.length} ${LANG==="vi"?"đã đếm":"gezählt"}</span>`;
+    h += `<span class="bp" style="background:var(--aA);color:var(--ac)">${counted}/${totalArts} ${LANG==="vi"?"đã đếm":"gezählt"}</span>`;
     if (diffs.length) h += `<span class="bp" style="background:var(--yA);color:var(--yl)">${diffs.length} ${LANG==="vi"?"chênh lệch":"Differenzen"}</span>`;
     h += `</div>`;
   }
@@ -141,25 +168,27 @@ function renderInventur(vS, aS) {
   return h;
 }
 
-function renderInvTable(arts, stId) {
+function renderInvTable(ents, stId) {
   let h = `<div class="tw"><table><thead><tr><th style="width:30px"></th><th>${t("c.article")}</th><th class="mob-hide">${t("c.storageloc")}</th><th style="text-align:right">${LANG==="vi"?"Hệ thống":"System"}</th><th style="text-align:center;color:var(--ac)">${LANG==="vi"?"Đếm được":"Gezählt"}</th><th style="text-align:right">${LANG==="vi"?"Chênh lệch":"Differenz"}</th></tr></thead><tbody>`;
-  arts.forEach(a => {
-    const sysIst = a.istBestand[stId] || 0;
-    const inv = INV_DATA[a.id];
+  ents.forEach(e => {
+    const a = e.a;
+    const sysIst = e.sys;
+    const inv = INV_DATA[e.key];
     const gezählt = inv?.gezählt;
     const diff = gezählt !== undefined ? gezählt - sysIst : null;
     const isDone = gezählt !== undefined;
     const rowBg = isDone ? (diff === 0 ? "" : diff > 0 ? "background:var(--gA)" : "background:var(--rA)") : "";
     h += `<tr style="border-bottom:1px solid var(--bd);${rowBg}">`;
     h += `<td><div class="th" style="width:28px;height:28px">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:`<span style="font-size:10px;color:var(--t3)">${isDone?(diff===0?"✓":"⚠"):"○"}</span>`}</div></td>`;
-    h += `<td style="font-weight:600">${esc(artN(a))}<div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a.sku)}</div></td>`;
-    h += `<td class="mob-hide"><span class="loc-tag">${esc(locLabel(a, stId)||"—")}</span></td>`;
+    // Mehrere Lagerorte: Zeile gilt nur für diesen Lagerort (auch mobil sichtbar)
+    h += `<td style="font-weight:600">${esc(artN(a))}<div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a.sku)}${e.split ? ` · <span style="color:var(--ac);font-family:inherit">📦 ${esc(e.ort||"—")}</span> <span title="${LANG==="vi"?"Tổng Kho":"Standort gesamt"}">(Σ ${a.istBestand[stId]||0})</span>` : ""}</div></td>`;
+    h += `<td class="mob-hide"><span class="loc-tag">${esc((e.split ? e.ort : locLabel(a, stId))||"—")}</span></td>`;
     h += `<td style="text-align:right;font-family:var(--m)">${sysIst} ${esc(a.einheit)}</td>`;
-    h += `<td style="text-align:center"><input class="inp inv-input" type="number" min="0" value="${gezählt!==undefined?gezählt:""}" placeholder="—" onchange="invCount('${a.id}',this.value,'${stId}')" style="width:70px;text-align:center;padding:5px;font-family:var(--m);font-size:14px;font-weight:700;border:2px solid ${isDone?(diff===0?"var(--gn)":"var(--yl)"):"var(--bd)"}"></td>`;
+    h += `<td style="text-align:center"><input class="inp inv-input" type="number" min="0" value="${gezählt!==undefined?gezählt:""}" placeholder="—" data-k="${esc(e.key)}" onchange="invCount(this.dataset.k,this.value,'${stId}')" style="width:70px;text-align:center;padding:5px;font-family:var(--m);font-size:14px;font-weight:700;border:2px solid ${isDone?(diff===0?"var(--gn)":"var(--yl)"):"var(--bd)"}"></td>`;
     h += `<td style="text-align:right;font-family:var(--m);font-weight:700;color:${diff===null?"var(--t3)":diff===0?"var(--gn)":diff>0?"var(--ac)":"var(--rd)"}">${diff===null?"—":diff>0?"+"+diff:diff}</td>`;
     h += `</tr>`;
   });
-  if (!arts.length) h += `<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:14px">—</td></tr>`;
+  if (!ents.length) h += `<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:14px">—</td></tr>`;
   h += `</tbody></table></div>`;
   return h;
 }
@@ -205,12 +234,11 @@ function startInventur() {
   if (typeof logActivity === "function") logActivity("inventur", `Gestartet @ ${D.standorte.find(s=>s.id===stId)?.name||""}`, { phase: "start", standortId: stId });
 }
 
-function invCount(artId, val, stId) {
-  if (val === "" || val === undefined) { delete INV_DATA[artId]; invPersist(); return; }
-  const a = D.artikel.find(x=>x.id===artId);
-  const sysIst = a?.istBestand[stId] || 0;
+// key = artId (Standort gesamt) oder artId@@Lagerort
+function invCount(key, val, stId) {
+  if (val === "" || val === undefined) { delete INV_DATA[key]; invPersist(); return; }
   const gezählt = parseInt(val) || 0;
-  INV_DATA[artId] = { gezählt, diff: gezählt - sysIst };
+  INV_DATA[key] = { gezählt, diff: gezählt - invSys(key, stId) };
   invPersist();
 }
 
@@ -240,25 +268,44 @@ function finishInventur() {
     const invItems = [];   // loader-shaped items for D.inventurProtokolle
     const _newBews = [];
     const diffLog = [];    // for Telegram summary
-    Object.entries(INV_DATA).forEach(([artId, v]) => {
+    const _changed = new Set(); // Artikel mit Korrektur → speichern
+    const addBew = (a, artId, menge, diff, ort, notiz) => {
+      const bew = {
+        id: uid(), typ: diff > 0 ? "korrektur_plus" : "korrektur_minus",
+        artikelId: artId, standortId: stId, menge,
+        datum: nw(), benutzer: U.id, referenz: "INVENTUR", notiz, lieferantId: "", lagerort: ort
+      };
+      D.bewegungen.unshift(bew);
+      _newBews.push(bew);
+    };
+    Object.entries(INV_DATA).forEach(([key, v]) => {
+      const [artId, ort] = key.split(INV_SEP);
       const a = D.artikel.find(x=>x.id===artId);
       if (!a) return;
-      const sysIst = a.istBestand[stId] || 0;
-      invItems.push({ artikelId: artId, gezaehlt: v.gezählt, system: sysIst, diff: v.diff });
-
-      if (v.diff !== 0) {
-        // Correct stock
-        locSetIst(a, stId, v.gezählt);
-        diffLog.push({ name: artN(a), sysIst, gezählt: v.gezählt, diff: v.diff });
-        // Log correction
-        const bew = {
-          id: uid(), typ: v.diff > 0 ? "korrektur_plus" : "korrektur_minus",
-          artikelId: artId, standortId: stId, menge: Math.abs(v.diff),
-          datum: nw(), benutzer: U.id, referenz: "INVENTUR", notiz: `Soll:${sysIst}→Ist:${v.gezählt}`, lieferantId: ""
-        };
-        D.bewegungen.unshift(bew);
-        _newBews.push(bew);
+      const rows = locRows(a, stId);
+      if (ort === undefined || rows.length < 2) {
+        // Ganzer Standort gezählt (SP mit 1 Lagerort, oder alter Entwurf)
+        const sysIst = a.istBestand[stId] || 0;
+        invItems.push({ artikelId: artId, gezaehlt: v.gezählt, system: sysIst, diff: v.diff, lagerort: ort === undefined ? "" : ort });
+        if (v.diff !== 0) {
+          // Correct stock (bei 1 Lagerort direkt; alter Entwurf mit mehreren Lagerorten → Differenz ab erstem Lagerort)
+          const lo = locSetIst(a, stId, ort === undefined ? v.gezählt : sysIst + v.diff);
+          _changed.add(artId);
+          diffLog.push({ name: artN(a), sysIst, gezählt: v.gezählt, diff: v.diff });
+          addBew(a, artId, Math.abs(v.diff), v.diff, lo, `Soll:${sysIst}→Ist:${v.gezählt}`);
+        }
+        return;
       }
+      // Ein Lagerort gezählt
+      const idx = rows.findIndex(r => r.ort === ort);
+      const sysIst = idx >= 0 ? rows[idx].ist : 0;
+      invItems.push({ artikelId: artId, gezaehlt: v.gezählt, system: sysIst, diff: v.diff, lagerort: ort });
+      if (v.diff === 0) return;
+      if (idx >= 0) { rows[idx].ist = v.gezählt; locStore(a, stId, rows); }
+      else locSetIst(a, stId, (a.istBestand[stId] || 0) + v.diff); // Lagerort inzwischen entfernt → Differenz ab erstem Lagerort
+      _changed.add(artId);
+      diffLog.push({ name: `${artN(a)} (${ort || "—"})`, sysIst, gezählt: v.gezählt, diff: v.diff });
+      addBew(a, artId, Math.abs(v.diff), v.diff, ort, `Soll:${sysIst}→Ist:${v.gezählt}`);
     });
 
     // Save protocol (shape matches sbLoadAll → survives reload)
@@ -268,8 +315,8 @@ function finishInventur() {
     INV_ACTIVE = false; INV_DATA = {}; invPersist();
     save(); render();
     // Supabase sync: inventur + corrected articles + corrections ledger
-    if (typeof sbSaveInventur === "function") sbSaveInventur({ id: prot.id, standortId: prot.standortId, datum: prot.datum, benutzer: prot.benutzer }, prot.items.map(it => ({ artikelId: it.artikelId, gezaehlt: it.gezaehlt, systemBestand: it.system, diff: it.diff }))).catch(e => console.error("sbInv:", e));
-    invItems.forEach(it => { if (it.diff !== 0) { const a = D.artikel.find(x => x.id === it.artikelId); if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:["ist"]}).catch(e => console.error("sbArt:", e)); } });
+    if (typeof sbSaveInventur === "function") sbSaveInventur({ id: prot.id, standortId: prot.standortId, datum: prot.datum, benutzer: prot.benutzer }, prot.items.map(it => ({ artikelId: it.artikelId, gezaehlt: it.gezaehlt, systemBestand: it.system, diff: it.diff, lagerort: it.lagerort || "" }))).catch(e => console.error("sbInv:", e));
+    _changed.forEach(artId => { const a = D.artikel.find(x => x.id === artId); if (a && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[stId],fields:["ist"]}).catch(e => console.error("sbArt:", e)); });
     if (typeof sbSaveBewegung === "function") _newBews.forEach(bew => sbSaveBewegung(bew).catch(e => console.error("sbBew:", e)));
     if (typeof logActivity === "function") logActivity("inventur", `Abgeschlossen @ ${stName}: ${invItems.length} Artikel gezählt, ${_newBews.length} Korrekturen`, { phase: "abschluss", protokollId: protId, standortId: stId, gezaehlt: invItems.length, korrekturen: _newBews.length });
     const diffLines = diffLog.slice(0,10).map(d => `• ${d.name}: ${d.sysIst}→${d.gezählt} (${d.diff>0?"+":""}${d.diff})`).join("\n");
@@ -283,7 +330,7 @@ function finishInventur() {
 function invResolveProt(prot) {
   const items = (prot.items || []).map(it => {
     const a = D.artikel.find(x=>x.id===it.artikelId);
-    return { name: a ? artN(a) : (it.artikelId||"?"), sku: a?.sku || "", sysIst: it.system ?? 0, gezählt: it.gezaehlt ?? 0, diff: it.diff ?? 0 };
+    return { name: a ? artN(a) : (it.artikelId||"?"), sku: a?.sku || "", lagerort: it.lagerort || "", sysIst: it.system ?? 0, gezählt: it.gezaehlt ?? 0, diff: it.diff ?? 0 };
   });
   return {
     datum: prot.datum,
@@ -302,10 +349,11 @@ function showInvDetail(id) {
   let h = `<div class="mo-ov" onclick="closeModal()"><div class="mo mo-w" onclick="event.stopPropagation()"><div class="mo-h"><div class="mo-ti">📋 ${LANG==="vi"?"Biên bản kiểm kê":"Inventur-Protokoll"} — ${fDT(inv.datum)}</div><button class="bi" onclick="closeModal()">✕</button></div><div class="mo-b">`;
   h += `<div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--t2)"><span>📍 ${esc(inv.standort)}</span><span>👤 ${esc(inv.benutzer)}</span><span>${inv.items.length} ${t("c.article")}</span></div>`;
 
-  h += `<div class="tw"><table><thead><tr><th>${t("c.article")}</th><th>SKU</th><th style="text-align:right">${LANG==="vi"?"Hệ thống":"System"}</th><th style="text-align:right">${LANG==="vi"?"Đếm":"Gezählt"}</th><th style="text-align:right">${LANG==="vi"?"Chênh lệch":"Differenz"}</th></tr></thead><tbody>`;
+  const withLo = inv.items.some(x => x.lagerort);
+  h += `<div class="tw"><table><thead><tr><th>${t("c.article")}</th><th>SKU</th>${withLo?`<th>${t("c.storageloc")}</th>`:""}<th style="text-align:right">${LANG==="vi"?"Hệ thống":"System"}</th><th style="text-align:right">${LANG==="vi"?"Đếm":"Gezählt"}</th><th style="text-align:right">${LANG==="vi"?"Chênh lệch":"Differenz"}</th></tr></thead><tbody>`;
   inv.items.forEach(it => {
     const bg = it.diff === 0 ? "" : it.diff > 0 ? "background:var(--gA)" : "background:var(--rA)";
-    h += `<tr style="${bg}"><td style="font-weight:600">${esc(it.name)}</td><td style="font-family:var(--m);font-size:10px;color:var(--t3)">${esc(it.sku)}</td>`;
+    h += `<tr style="${bg}"><td style="font-weight:600">${esc(it.name)}</td><td style="font-family:var(--m);font-size:10px;color:var(--t3)">${esc(it.sku)}</td>${withLo?`<td>${esc(it.lagerort)}</td>`:""}`;
     h += `<td style="text-align:right;font-family:var(--m)">${it.sysIst}</td>`;
     h += `<td style="text-align:right;font-family:var(--m);font-weight:700">${it.gezählt}</td>`;
     h += `<td style="text-align:right;font-family:var(--m);font-weight:700;color:${it.diff===0?"var(--gn)":it.diff>0?"var(--ac)":"var(--rd)"}">${it.diff>0?"+"+it.diff:it.diff}</td></tr>`;
@@ -329,9 +377,10 @@ function exportInvPDF(id) {
   let html = `<html><head><meta charset="utf-8"><title>Inventur ${inv.datum}</title><style>body{font-family:Helvetica,Arial,sans-serif;font-size:11px;margin:20px}h1{font-size:16px}table{width:100%;border-collapse:collapse}th{background:#f0f0f0;text-align:left;padding:4px 6px;font-size:10px;border-bottom:2px solid #ccc}td{padding:4px 6px;border-bottom:1px solid #eee}.r{text-align:right}.mono{font-family:monospace}.pos{color:#059669;font-weight:bold}.neg{color:#DC2626;font-weight:bold}.zero{color:#999}</style></head><body>`;
   html += `<h1>${esc(D.einstellungen.firmenname)} — Inventur-Protokoll</h1>`;
   html += `<p><b>Datum:</b> ${fDT(inv.datum)} | <b>Standort:</b> ${esc(inv.standort)} | <b>Benutzer:</b> ${esc(inv.benutzer)}</p>`;
-  html += `<table><thead><tr><th>Artikel</th><th>SKU</th><th class="r">System</th><th class="r">Gezählt</th><th class="r">Differenz</th></tr></thead><tbody>`;
+  const withLo = inv.items.some(x => x.lagerort);
+  html += `<table><thead><tr><th>Artikel</th><th>SKU</th>${withLo?"<th>Lagerort</th>":""}<th class="r">System</th><th class="r">Gezählt</th><th class="r">Differenz</th></tr></thead><tbody>`;
   inv.items.forEach(it => {
-    html += `<tr><td>${esc(it.name)}</td><td class="mono">${esc(it.sku)}</td><td class="r mono">${it.sysIst}</td><td class="r mono" style="font-weight:bold">${it.gezählt}</td><td class="r mono ${it.diff>0?"pos":it.diff<0?"neg":"zero"}">${it.diff>0?"+"+it.diff:it.diff}</td></tr>`;
+    html += `<tr><td>${esc(it.name)}</td><td class="mono">${esc(it.sku)}</td>${withLo?`<td>${esc(it.lagerort)}</td>`:""}<td class="r mono">${it.sysIst}</td><td class="r mono" style="font-weight:bold">${it.gezählt}</td><td class="r mono ${it.diff>0?"pos":it.diff<0?"neg":"zero"}">${it.diff>0?"+"+it.diff:it.diff}</td></tr>`;
   });
   const diffC = inv.items.filter(x=>x.diff!==0).length;
   html += `</tbody></table><p style="margin-top:12px;font-weight:bold">${inv.items.length} Artikel gezählt · ${diffC} Differenzen</p></body></html>`;

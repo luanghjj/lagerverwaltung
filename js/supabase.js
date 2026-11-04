@@ -153,7 +153,8 @@ async function sbLoadAll() {
       id: b.id, typ: b.typ, artikelId: b.artikel_id, standortId: b.standort_id,
       zielStandortId: b.ziel_standort_id || "", menge: b.menge || 0,
       datum: b.datum || b.created_at, benutzer: b.benutzer || "",
-      referenz: b.referenz || "", notiz: b.notiz || "", lieferantId: b.lieferant_id || ""
+      referenz: b.referenz || "", notiz: b.notiz || "", lieferantId: b.lieferant_id || "",
+      lagerort: b.lagerort || ""
     })).sort((a, b) => new Date(b.datum) - new Date(a.datum));
 
     // ── Bestellungen ──
@@ -245,7 +246,7 @@ async function sbLoadAll() {
       if (!invItemsByProt[ii.protokoll_id]) invItemsByProt[ii.protokoll_id] = [];
       invItemsByProt[ii.protokoll_id].push({
         artikelId: ii.artikel_id, gezaehlt: ii.gezaehlt || 0,
-        system: ii.system_bestand || 0, diff: ii.diff || 0
+        system: ii.system_bestand || 0, diff: ii.diff || 0, lagerort: ii.lagerort || ""
       });
     });
     result.inventurProtokolle = inventurProtokolle.map(p => ({
@@ -396,13 +397,23 @@ async function sbResubmitArtikel(id) {
 }
 
 // Save bewegung
+// Spalte "lagerort" (bewegungen / inventur_items) ist neu. Fehlt sie in der DB noch,
+// wird ohne sie gespeichert – die Buchung geht nie verloren.
+function _sbNoLagerortCol(error) { return !!error && /lagerort/i.test(error.message || "") && /column|schema/i.test(error.message || ""); }
+
 async function sbSaveBewegung(b) {
-  await sb.from("bewegungen").upsert({
+  const row = {
     id: b.id, typ: b.typ, artikel_id: b.artikelId, standort_id: b.standortId,
     ziel_standort_id: b.zielStandortId || null, menge: b.menge, datum: b.datum,
     benutzer: b.benutzer || null, referenz: b.referenz || "", notiz: b.notiz || "",
-    lieferant_id: b.lieferantId || null
-  });
+    lieferant_id: b.lieferantId || null, lagerort: b.lagerort || ""
+  };
+  let { error } = await sb.from("bewegungen").upsert(row);
+  if (_sbNoLagerortCol(error)) {
+    delete row.lagerort;
+    ({ error } = await sb.from("bewegungen").upsert(row));
+  }
+  if (error) console.error("[sbSaveBewegung]", error.message);
 }
 
 // Save bestellung (DB has: id, artikel_id, lieferant_id, standort_id, menge, status, datum, erstellt_von, empfangen, fehlmenge, notiz)
@@ -582,9 +593,13 @@ async function sbSaveInventur(prot, items) {
   }, { onConflict: "id" });
   if (items?.length) {
     await sb.from("inventur_items").delete().eq("protokoll_id", prot.id);
-    await sb.from("inventur_items").insert(
-      items.map(it => ({ id: uid(), protokoll_id: prot.id, artikel_id: it.artikelId, gezaehlt: it.gezaehlt, system_bestand: it.systemBestand, diff: it.diff }))
-    );
+    const rows = items.map(it => ({ id: uid(), protokoll_id: prot.id, artikel_id: it.artikelId, gezaehlt: it.gezaehlt, system_bestand: it.systemBestand, diff: it.diff, lagerort: it.lagerort || "" }));
+    let { error } = await sb.from("inventur_items").insert(rows);
+    if (_sbNoLagerortCol(error)) {
+      rows.forEach(r => delete r.lagerort);
+      ({ error } = await sb.from("inventur_items").insert(rows));
+    }
+    if (error) console.error("[sbSaveInventur] items:", error.message);
   }
 }
 
