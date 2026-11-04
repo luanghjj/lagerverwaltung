@@ -42,7 +42,7 @@ function renderStandortList() {
     h += `<td style="font-family:var(--m);font-weight:600">${artCount}</td>`;
     if (canP()) h += `<td style="font-family:var(--m);font-weight:600;color:var(--gn)">${fC(wert)}</td>`;
     h += `<td style="font-size:11px;color:var(--t2)">${userCount} ${LANG==="vi"?"người":"User"}</td>`;
-    const lpCount = (s.lagerplaetze||[]).length;
+    const lpCount = (D.lagerplaetze||[]).filter(lp=>lp.standortId===s.id).length;
     h += `<td><div style="display:flex;gap:2px"><button class="bi" onclick="showLagerplaetze('${s.id}')" title="${LANG==="vi"?"Vị trí kho":"Lagerplätze"}">📦</button><button class="bi" onclick="editStandort('${s.id}')" title="${t("c.edit")}">✎</button><button class="bi dn" onclick="delStandort('${s.id}')" title="${t("c.delete")}">🗑</button></div>${lpCount?`<div style="font-size:9px;color:var(--t3)">${lpCount} ${LANG==="vi"?"vị trí":"Plätze"}</div>`:""}</td>`;
     h += `</tr>`;
   });
