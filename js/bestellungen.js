@@ -117,7 +117,7 @@ function renderBestellungen(vS, aS) {
       const p = a?.lieferanten.find(x=>x.lieferantId===b.lieferantId)?.preis||0;
       const stC = { bestellt: "#F59E0B", geliefert: "#10B981", storniert: "#EF4444" }[b.status] || "#666";
       const conv = a ? formatUnitConv(b.menge, a) : "";
-      const lagerort = a?.lagerort?.[b.standortId] || "";
+      const lagerort = a ? locLabel(a, b.standortId) : "";
       h += `<tr style="border-bottom:1px solid var(--bd)">`;
       h += `<td style="padding:5px 8px;font-family:var(--m);font-size:10px">${b.datum}</td>`;
       h += `<td style="padding:5px 8px;font-weight:600;cursor:pointer" onclick="showArtikelDetail('${b.artikelId}')">${a?.bilder?.length?`<img src="${esc(a.bilder[0])}" style="width:22px;height:22px;border-radius:3px;object-fit:cover;vertical-align:middle;margin-right:4px">`:""}<span style="color:var(--ac)">${esc(artN(a))}</span><div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a?.sku||"")}</div></td>`;
@@ -172,7 +172,7 @@ function renderBestellungenTransfers() {
       h += `</tr></thead><tbody>`;
       tf.items.forEach((it, i) => {
         const a = D.artikel.find(x=>x.id===it.artId);
-        const lagerort = a?.lagerort?.[tf.nachId] || "";
+        const lagerort = a ? locLabel(a, tf.nachId) : "";
         h += `<tr style="border-bottom:1px solid var(--bd)">`;
         h += `<td style="padding:4px 8px;font-weight:600">${esc(artN(a))}<div style="font-size:9px;color:var(--t3)">${esc(a?.einheit||"")}</div></td>`;
         h += `<td style="padding:4px 8px">${lagerort?`<span class="loc-tag" style="font-size:9px">📦 ${esc(lagerort)}</span>`:`<span style="color:var(--t3);font-size:10px">—</span>`}</td>`;
@@ -228,7 +228,7 @@ function bestConfirmOne(id) {
     b.status = "geliefert";
     b.empfangen = empfangen;
     if (a && empfangen > 0) {
-      a.istBestand[b.standortId] = (a.istBestand[b.standortId]||0) + empfangen;
+      locSetIst(a, b.standortId, (a.istBestand[b.standortId]||0) + empfangen);
       D.bewegungen.unshift({id:uid(),typ:"eingang",artikelId:b.artikelId,standortId:b.standortId,menge:empfangen,datum:nw(),benutzer:U.id,referenz:`B-${b.id}`,notiz:diff<0?`Fehlmenge: ${b.menge} bestellt, ${empfangen} empfangen`:diff>0?`Mehrlieferung: +${diff}`:"",lieferantId:b.lieferantId});
     }
     if (diff < 0) {
@@ -273,7 +273,7 @@ function bestConfirmAll(liefKey) {
       d.b.status = "geliefert";
       d.b.empfangen = d.empfangen;
       if (d.a && d.empfangen > 0) {
-        d.a.istBestand[d.b.standortId] = (d.a.istBestand[d.b.standortId]||0) + d.empfangen;
+        locSetIst(d.a, d.b.standortId, (d.a.istBestand[d.b.standortId]||0) + d.empfangen);
         D.bewegungen.unshift({id:uid(),typ:"eingang",artikelId:d.b.artikelId,standortId:d.b.standortId,menge:d.empfangen,datum:nw(),benutzer:U.id,referenz:`B-${d.b.id}`,notiz:d.diff<0?`Fehlmenge: ${d.b.menge} bestellt, ${d.empfangen} empfangen`:d.diff>0?`Mehrlieferung: +${d.diff}`:"",lieferantId:d.b.lieferantId});
         count++;
       }

@@ -19,7 +19,7 @@ function renderBewBuch(typ, vS, aS) {
 
   // Batch area
   h += `<div style="background:var(--b2);border:2px solid ${isE?"var(--gn)":"var(--rd)"}22;border-radius:10px;padding:12px;margin-bottom:14px">`;
-  h += `<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap"><div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("c.location")}</label><select class="sel" id="bew_standort">${vS.map(s=>`<option value="${s.id}" ${s.id===stId?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div><div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("c.reference")}</label><input class="inp" id="bew_ref" placeholder="LS-Nr."></div>${isE?`<div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("c.supplier")}</label><select class="sel" id="bew_lief"><option value="">—</option>${D.lieferanten.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join("")}</select></div>`:`<div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("m.reason")}</label><input class="inp" id="bew_grund" list="grund_list" placeholder="${LANG==="vi"?"Nhập hoặc chọn...":"Eingeben oder wählen..."}"><datalist id="grund_list">${getGrundOptions().map(g=>`<option value="${esc(g)}">`).join("")}</datalist></div>`}</div>`;
+  h += `<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap"><div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("c.location")}</label><select class="sel" id="bew_standort" onchange="renderBatch('${typ}')">${vS.map(s=>`<option value="${s.id}" ${s.id===stId?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div><div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("c.reference")}</label><input class="inp" id="bew_ref" placeholder="LS-Nr."></div>${isE?`<div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("c.supplier")}</label><select class="sel" id="bew_lief"><option value="">—</option>${D.lieferanten.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join("")}</select></div>`:`<div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label>${t("m.reason")}</label><input class="inp" id="bew_grund" list="grund_list" placeholder="${LANG==="vi"?"Nhập hoặc chọn...":"Eingeben oder wählen..."}"><datalist id="grund_list">${getGrundOptions().map(g=>`<option value="${esc(g)}">`).join("")}</datalist></div>`}</div>`;
 
   // Search
   h += `<div class="live-search-wrap" style="margin-bottom:10px"><div class="srch"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" id="bew_search" placeholder="${t("c.search")}" oninput="bewSearch('${typ}')" onkeydown="bewSearchKey(event,'${typ}')" style="font-size:13px;padding:9px 9px 9px 28px" autocomplete="off"></div><div id="bew_results"></div></div>`;
@@ -82,7 +82,7 @@ function bewSearch(typ) {
     const st = stkSt(ist,soll,min);
     const conv = formatUnitConv(ist, a);
     const inB = BATCH.find(b=>b.artikelId===a.id);
-    h += `<div class="live-item ${i===0?"hl":""}" onmousedown="addToBatch('${a.id}','${typ}')"><div class="li-img">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12.5px">${esc(artN(a))} ${inB?`<span style="font-size:9.5px;color:var(--ac);font-weight:700">(${inB.menge}×)</span>`:""}</div><div style="font-size:10.5px;color:var(--t2);display:flex;gap:6px"><span style="font-family:var(--m)">${esc(a.sku)}</span><span class="loc-tag" style="font-size:9px;padding:0 4px">${esc(a.lagerort?.[stId]||"—")}</span></div></div><div style="text-align:right;flex-shrink:0"><div style="font-family:var(--m);font-weight:700;font-size:13px;color:${st.c}">${ist} ${esc(a.einheit)}</div>${conv?`<div class="unit-conv">${esc(conv)}</div>`:""}</div></div>`;
+    h += `<div class="live-item ${i===0?"hl":""}" onmousedown="addToBatch('${a.id}','${typ}')"><div class="li-img">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12.5px">${esc(artN(a))} ${inB?`<span style="font-size:9.5px;color:var(--ac);font-weight:700">(${inB.menge}×)</span>`:""}</div><div style="font-size:10.5px;color:var(--t2);display:flex;gap:6px"><span style="font-family:var(--m)">${esc(a.sku)}</span><span class="loc-tag" style="font-size:9px;padding:0 4px">${esc(locLabel(a, stId)||"—")}</span></div></div><div style="text-align:right;flex-shrink:0"><div style="font-family:var(--m);font-weight:700;font-size:13px;color:${st.c}">${ist} ${esc(a.einheit)}</div>${conv?`<div class="unit-conv">${esc(conv)}</div>`:""}</div></div>`;
   });
   h += `</div>`;
   $("#bew_results").innerHTML = h;
@@ -150,7 +150,7 @@ function showLoadOrderModal() {
     h += `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px">`;
     g.items.slice(0, 6).forEach(b => {
       const a = D.artikel.find(x=>x.id===b.artikelId);
-      const lagerort = a?.lagerort?.[b.standortId] || "";
+      const lagerort = a ? locLabel(a, b.standortId) : "";
       h += `<span style="font-size:9.5px;padding:2px 6px;background:var(--b4);border-radius:3px;color:var(--t2)">${b.menge}× ${esc(artN(a))}${lagerort?` 📦${esc(lagerort)}`:""}</span>`;
     });
     if (g.items.length > 6) h += `<span style="font-size:9.5px;color:var(--t3)">+${g.items.length-6}</span>`;
@@ -230,8 +230,10 @@ function renderBatch(typ) {
     const ist=a.istBestand[stId]||0;
     const nv = isE ? ist+b.menge : ist-b.menge;
     const conv = formatUnitConv(b.menge, a);
-    const lagerort = a.lagerort?.[stId] || "";
-    h += `<div class="batch-item"><div style="font-size:11px;color:var(--t3);font-weight:700;width:18px;text-align:center">${idx+1}</div><div class="bi-thumb">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12.5px">${esc(artN(a))}</div><div style="font-size:10px;color:var(--t2)">${esc(a.sku)} · ${ist}→<b style="color:${isE?"var(--gn)":nv<0?"var(--rd)":"var(--yl)"}">${nv}</b> ${esc(a.einheit)} ${conv?`<span class="unit-conv">= ${esc(conv)}</span>`:""}</div>${lagerort?`<div style="margin-top:1px"><span class="loc-tag" style="font-size:9px">📦 ${esc(lagerort)}</span></div>`:""}</div><div style="display:flex;align-items:center;gap:4px;flex-shrink:0"><button class="bi" onclick="batchQty('${b.id}',-1,'${typ}')" style="font-size:15px;font-weight:700;width:24px;height:24px;justify-content:center">−</button><input class="inp" type="number" min="1" value="${b.menge}" onchange="batchSet('${b.id}',this.value,'${typ}')" style="width:50px;text-align:center;padding:3px 2px;font-family:var(--m);font-size:14px;font-weight:700"><button class="bi" onclick="batchQty('${b.id}',1,'${typ}')" style="font-size:15px;font-weight:700;width:24px;height:24px;justify-content:center">+</button></div><button class="bi dn" onclick="batchRem('${b.id}','${typ}')">✕</button></div>`;
+    // Mehrere Lagerorte: Lagerort wählen (Standard: erster); sonst wie bisher nur anzeigen
+    const ortSel = locSelectHtml(a, stId, `bort_${b.id}`, b.ort, `batchOrt('${b.id}',this.value)`, "font-size:10.5px;padding:2px 6px;margin-top:2px;max-width:100%");
+    const lagerort = ortSel ? "" : (a.lagerort?.[stId] || "");
+    h += `<div class="batch-item"><div style="font-size:11px;color:var(--t3);font-weight:700;width:18px;text-align:center">${idx+1}</div><div class="bi-thumb">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12.5px">${esc(artN(a))}</div><div style="font-size:10px;color:var(--t2)">${esc(a.sku)} · ${ist}→<b style="color:${isE?"var(--gn)":nv<0?"var(--rd)":"var(--yl)"}">${nv}</b> ${esc(a.einheit)} ${conv?`<span class="unit-conv">= ${esc(conv)}</span>`:""}</div>${lagerort?`<div style="margin-top:1px"><span class="loc-tag" style="font-size:9px">📦 ${esc(lagerort)}</span></div>`:""}${ortSel?`<div>${ortSel}</div>`:""}</div><div style="display:flex;align-items:center;gap:4px;flex-shrink:0"><button class="bi" onclick="batchQty('${b.id}',-1,'${typ}')" style="font-size:15px;font-weight:700;width:24px;height:24px;justify-content:center">−</button><input class="inp" type="number" min="1" value="${b.menge}" onchange="batchSet('${b.id}',this.value,'${typ}')" style="width:50px;text-align:center;padding:3px 2px;font-family:var(--m);font-size:14px;font-weight:700"><button class="bi" onclick="batchQty('${b.id}',1,'${typ}')" style="font-size:15px;font-weight:700;width:24px;height:24px;justify-content:center">+</button></div><button class="bi dn" onclick="batchRem('${b.id}','${typ}')">✕</button></div>`;
   });
 
   h += `<div class="batch-total"><div><span style="font-size:11px;color:var(--t2)">${t("c.total")}:</span><span style="font-family:var(--m);font-weight:700;font-size:16px;margin-left:6px">${BATCH.length} ${t("c.article")}</span><span style="font-family:var(--m);font-weight:700;font-size:16px;margin-left:4px;color:${isE?"var(--gn)":"var(--rd)"}">${isE?"+":"−"}${total}</span></div><button class="btn ${isE?"btn-g":"btn-d"}" style="font-size:13px;padding:8px 24px" onclick="buchenAlle('${typ}')">${isE?"↓":"↑"} ${t("m.bookall")} (${BATCH.length})</button></div>`;
@@ -240,6 +242,7 @@ function renderBatch(typ) {
 
 function batchQty(id, delta, typ) { const b = BATCH.find(x=>x.id===id); if (b) { b.menge = Math.max(1, b.menge+delta); renderBatch(typ); } }
 function batchSet(id, val, typ) { const b = BATCH.find(x=>x.id===id); if (b) { b.menge = Math.max(1, parseInt(val)||1); renderBatch(typ); } }
+function batchOrt(id, ort) { const b = BATCH.find(x=>x.id===id); if (b) b.ort = ort; }
 function batchRem(id, typ) { BATCH = BATCH.filter(x=>x.id!==id); renderBatch(typ); }
 
 function buchenAlle(typ) {
@@ -263,8 +266,8 @@ function buchenAlle(typ) {
     const a = D.artikel.find(x=>x.id===b.artikelId);
     if (a) {
       const alt = a.istBestand[stId]||0;
-      if (isE) a.istBestand[stId] = (a.istBestand[stId]||0) + b.menge;
-      else a.istBestand[stId] = Math.max(0, (a.istBestand[stId]||0) - b.menge);
+      // Bei mehreren Lagerorten: am gewählten Lagerort; Ausgang, der dort nicht reicht, vom nächsten Lagerort
+      locSetIst(a, stId, isE ? alt + b.menge : Math.max(0, alt - b.menge), b.ort);
       _sumLines.push({a, menge:b.menge});
       _sumChanges.push({a, alt, neu:a.istBestand[stId]});
     }

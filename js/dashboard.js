@@ -355,7 +355,7 @@ function renderDashboard(vS, aS) {
       h += `<td><div class="th" style="width:26px;height:26px">${a.bilder?.length ? `<img src="${esc(a.bilder[0])}">` : ""}</div></td>`;
       h += `<td><div style="font-weight:600">${esc(artN(a))}</div><div style="font-size:9px;color:var(--t3);font-family:var(--m)">${esc(a.sku)}</div></td>`;
       h += `<td class="mob-hide">${esc(s.name)}</td>`;
-      h += `<td class="mob-hide"><span class="loc-tag">${esc(a.lagerort?.[s.id] || "—")}</span></td>`;
+      h += `<td class="mob-hide"><span class="loc-tag">${esc(locLabel(a, s.id) || "—")}</span></td>`;
       h += `<td style="text-align:right;font-family:var(--m);font-weight:700;color:${isEmpty ? "var(--rd)" : "var(--yl)"}">${ist} <span style="font-weight:400;color:var(--t3)">/ ${soll}</span></td>`;
       h += `<td class="mob-hide" style="text-align:right;font-family:var(--m);color:var(--t3)">${min}</td>`;
       h += `<td style="text-align:center">${isEmpty ? `<span class="bp" style="background:var(--rA);color:var(--rd)">${LANG === "vi" ? "HẾT" : "LEER"}</span>` : isOrdered ? `<span class="bp" style="background:var(--aA);color:var(--ac)">📦 ${LANG === "vi" ? "Đã đặt" : "Bestellt"}</span>` : `<span class="bp" style="background:var(--yA);color:var(--yl)">⚠ ${LANG === "vi" ? "Thấp" : "Niedrig"}</span>`}${!isOrdered && can(U.role,"bestellliste") ? `<button class="btn btn-d btn-sm" onclick="event.stopPropagation();dashQuickOrder('${a.id}','${s.id}')" style="margin-left:4px;padding:2px 6px;font-size:9px">🛒</button>` : ""}</td>`;

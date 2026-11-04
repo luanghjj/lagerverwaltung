@@ -129,7 +129,7 @@ function bkpGetSections() {
       color:"var(--pu)", default:true },
     { id:"bestand", icon:"📊", de:"Bestände",vi:"Tồn kho",desc_de:"Ist/Soll/Min-Werte, Lagerorte pro Standort",desc_vi:"Giá trị Tồn/Chuẩn/Min, vị trí kho theo chi nhánh",
       count:`${D.artikel.length}×${D.standorte.length} Werte`,
-      size:bkpSizeOf(D.artikel.map(a=>({id:a.id,istBestand:a.istBestand,sollBestand:a.sollBestand,mindestmenge:a.mindestmenge,lagerort:a.lagerort}))),
+      size:bkpSizeOf(D.artikel.map(a=>({id:a.id,istBestand:a.istBestand,sollBestand:a.sollBestand,mindestmenge:a.mindestmenge,lagerort:a.lagerort,lagerortSplit:a.lagerortSplit||{}}))),
       color:"var(--gn)", default:true },
     { id:"bewegungen", icon:"↕", de:"Bewegungen",vi:"Biến động",desc_de:"Warenein-/ausgang, Korrekturen, Umbuchungen",desc_vi:"Nhập/xuất kho, điều chỉnh, chuyển kho",
       count:`${D.bewegungen.length}`,
@@ -259,7 +259,7 @@ function bkpCalcSize() {
     size += bkpSizeOf({artikel:artNoImg,kategorien:D.kategorien,standorte:D.standorte,lagerplaetze:D.lagerplaetze||[],lieferanten:D.lieferanten,bereiche:D.bereiche||[]});
   }
   if (sel.users) size += bkpSizeOf(D.users);
-  if (sel.bestand) size += bkpSizeOf(D.artikel.map(a=>({id:a.id,istBestand:a.istBestand,sollBestand:a.sollBestand,mindestmenge:a.mindestmenge,lagerort:a.lagerort})));
+  if (sel.bestand) size += bkpSizeOf(D.artikel.map(a=>({id:a.id,istBestand:a.istBestand,sollBestand:a.sollBestand,mindestmenge:a.mindestmenge,lagerort:a.lagerort,lagerortSplit:a.lagerortSplit||{}})));
   if (sel.bewegungen) { const bew = cutoff ? D.bewegungen.filter(b=>b.datum>=cutoff) : D.bewegungen; size += bkpSizeOf(bew); }
   if (sel.bestellungen) { const best = cutoff ? D.bestellungen.filter(b=>b.datum>=cutoff) : D.bestellungen; size += bkpSizeOf({bestellungen:best,bestellliste:D.bestellliste,bestellVorlagen:D.bestellVorlagen||[]}); }
   if (sel.transfers) size += bkpSizeOf(D.transfers||[]);
@@ -296,7 +296,7 @@ function bkpExport() {
   if (sel.users) backup.users = D.users;
   if (sel.bestand && !sel.stamm) {
     // If stamm not included, store bestand separately
-    backup._bestandData = D.artikel.map(a=>({id:a.id,istBestand:a.istBestand,sollBestand:a.sollBestand,mindestmenge:a.mindestmenge,lagerort:a.lagerort}));
+    backup._bestandData = D.artikel.map(a=>({id:a.id,istBestand:a.istBestand,sollBestand:a.sollBestand,mindestmenge:a.mindestmenge,lagerort:a.lagerort,lagerortSplit:a.lagerortSplit||{}}));
   }
   if (sel.bewegungen) backup.bewegungen = cutoff ? D.bewegungen.filter(b=>b.datum>=cutoff) : D.bewegungen;
   if (sel.bestellungen) {
@@ -460,7 +460,7 @@ function executeImport() {
     if (sel.bestand && imp._bestandData) {
       imp._bestandData.forEach(bd => {
         const a = D.artikel.find(x=>x.id===bd.id);
-        if (a) { a.istBestand = bd.istBestand; a.sollBestand = bd.sollBestand; a.mindestmenge = bd.mindestmenge; a.lagerort = bd.lagerort; }
+        if (a) { a.istBestand = bd.istBestand; a.sollBestand = bd.sollBestand; a.mindestmenge = bd.mindestmenge; a.lagerort = bd.lagerort; a.lagerortSplit = bd.lagerortSplit || {}; }
       });
       count++;
     }

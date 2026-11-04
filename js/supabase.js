@@ -124,17 +124,18 @@ async function sbLoadAll() {
 
     result.artikel = artikel.filter(a => !a.deleted_at).map(a => {
       const bs = bestandByArt[a.id] || [];
-      const istBestand = {}, sollBestand = {}, mindestmenge = {}, lagerort = {};
+      const istBestand = {}, sollBestand = {}, mindestmenge = {}, lagerort = {}, lagerortSplit = {};
       bs.forEach(b => {
         istBestand[b.standort_id] = b.ist_bestand || 0;
         sollBestand[b.standort_id] = b.soll_bestand || 0;
         mindestmenge[b.standort_id] = b.mindestmenge || 0;
         lagerort[b.standort_id] = b.lagerort || "";
+        if (Array.isArray(b.lagerort_split) && b.lagerort_split.length > 1) lagerortSplit[b.standort_id] = b.lagerort_split;
       });
-      return {
+      const art = {
         id: a.id, name: a.name, name_vi: a.name_vi || "", sku: a.sku || "",
         barcodes: a.barcodes || [], kategorien: katByArt[a.id] || [],
-        bilder: a.bilder || [], lagerort, istBestand, sollBestand, mindestmenge,
+        bilder: a.bilder || [], lagerort, lagerortSplit, istBestand, sollBestand, mindestmenge,
         einheit: a.einheit || "Stk.", packUnit: a.pack_unit || "", packSize: a.pack_size || 0,
         lieferanten: liefByArt[a.id] || [],
         beschreibung: a.beschreibung || "", beschreibung_vi: a.beschreibung_vi || "",
@@ -142,6 +143,9 @@ async function sbLoadAll() {
         createdBy: a.created_by || "",
         rejectedReason: a.rejected_reason || ""
       };
+      // Aufteilung an die Summen-Spalten angleichen (falls eine ältere App-Version nur IST/Lagerort geschrieben hat)
+      if (typeof locStore === "function") Object.keys(lagerortSplit).forEach(sid => locStore(art, sid, locRows(art, sid)));
+      return art;
     });
 
     // ── Bewegungen (sort newest first) ──
@@ -296,14 +300,16 @@ async function sbDelete(table, id) {
 // Save artikel (+ optional bestand / kategorien / lieferanten)
 // opts.meta   (default true):  Artikel-Stammdaten + Kategorien + Lieferanten schreiben
 // opts.sids   (default []):    nur für diese Standorte Bestand-Felder schreiben
-// opts.fields (default alle):  welche Bestand-Felder: "ist","soll","min","lagerort"
+// opts.fields (default alle):  welche Bestand-Felder: "ist","soll","min","lagerort","split"
+//   "split" = Aufteilung auf mehrere Lagerorte (lagerort_split). Wird zusätzlich automatisch mitgeschrieben,
+//   wenn IST/SOLL/Lagerort gespeichert werden und der Artikel dort mehrere Lagerorte hat (Summe ↔ Aufteilung konsistent).
 // Nie mehr alle Standorte aus dem lokalen (evtl. veralteten) Stand überschreiben.
 const SB_BESTAND_COLS = { ist: ["ist_bestand", "istBestand"], soll: ["soll_bestand", "sollBestand"], min: ["mindestmenge", "mindestmenge"], lagerort: ["lagerort", "lagerort"] };
 async function sbSaveArtikel(a, opts) {
   const o = opts || {};
   const meta = o.meta !== false;
   const sids = (o.sids || []).filter(Boolean);
-  const fields = o.fields || ["ist", "soll", "min", "lagerort"];
+  const fields = o.fields || ["ist", "soll", "min", "lagerort", "split"];
   // 1. Upsert artikel (only columns that exist in DB)
   if (meta) {
   const { error: artErr } = await sb.from("artikel").upsert({
@@ -323,10 +329,15 @@ async function sbSaveArtikel(a, opts) {
   for (const sid of [...new Set(sids)]) {
     const patch = {};
     fields.forEach(k => {
+      if (!SB_BESTAND_COLS[k]) return;
       const [col, prop] = SB_BESTAND_COLS[k];
       const v = (a[prop] || {})[sid];
       patch[col] = k === "lagerort" ? (v || "") : (v || 0);
     });
+    if (typeof locSplitDb === "function" && (fields.includes("split") ||
+        (fields.some(k => k === "ist" || k === "soll" || k === "lagerort") && locIsSplit(a, sid)))) {
+      patch.lagerort_split = locSplitDb(a, sid);
+    }
     const { data: upd, error: updErr } = await sb.from("artikel_bestand").update(patch)
       .eq("artikel_id", a.id).eq("standort_id", sid).select("artikel_id");
     if (updErr) { console.error("[sbSaveArtikel] bestand:", updErr.message); throw new Error("bestand: " + updErr.message); }

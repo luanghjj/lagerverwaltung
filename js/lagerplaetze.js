@@ -48,7 +48,7 @@ function renderLagerplaetze() {
       }
       h += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px">`;
       zItems.forEach(lp => {
-        const artCount = D.artikel.filter(a => a.lagerort?.[s.id] === lp.name).length;
+        const artCount = D.artikel.filter(a => locHas(a, s.id, lp.name)).length;
         const tempIcon = lp.temperatur === "kuehl" ? "❄️" : lp.temperatur === "tk" ? "🧊" : lp.temperatur === "warm" ? "🌡️" : "🏠";
         const tempLabel = {kuehl:LANG==="vi"?"Lạnh":"Kühl (2-8°C)",tk:LANG==="vi"?"Đông lạnh":"Tiefkühl (-18°C)",warm:LANG==="vi"?"Ấm":"Warm",normal:LANG==="vi"?"Bình thường":"Normal"}[lp.temperatur||"normal"]||"Normal";
 
@@ -99,7 +99,7 @@ function editLagerplatz(id) {
   h += `<div class="fg"><label>${LANG==="vi"?"Ghi chú":"Beschreibung"}</label><input class="inp" id="lp_desc" value="${esc(f.beschreibung||"")}" placeholder="${LANG==="vi"?"VD: Nur für Fisch":"z.B. Nur für Fisch-Produkte"}"></div>`;
 
   // Show articles currently assigned
-  const artCount = D.artikel.filter(a => a.lagerort?.[f.standortId] === f.name && f.name).length;
+  const artCount = D.artikel.filter(a => locHas(a, f.standortId, f.name)).length;
   if (lp && artCount) {
     h += `<div style="margin-top:8px;padding:6px 10px;background:var(--b3);border-radius:6px;font-size:11px;color:var(--t2)">📋 ${artCount} ${t("c.article")} ${LANG==="vi"?"đang được gán tại đây":"sind diesem Lagerplatz zugeordnet"}</div>`;
   }
@@ -112,6 +112,7 @@ function saveLagerplatz(id, isEdit) {
   const name = document.getElementById("lp_name")?.value?.trim();
   if (!name) { toast(LANG==="vi"?"Vui lòng nhập tên":"Bitte Name eingeben","e"); return; }
   const standortId = document.getElementById("lp_standort")?.value;
+  const _renamed = {}; // artikelId → hatte mehrere Lagerorte (dann Aufteilung mitspeichern)
   const f = {
     id, name, name_vi: document.getElementById("lp_name_vi")?.value?.trim()||"",
     standortId, zone: document.getElementById("lp_zone")?.value?.trim()||"",
@@ -127,7 +128,7 @@ function saveLagerplatz(id, isEdit) {
     // Rename: update all articles referencing old name
     if (old && old.name !== name) {
       D.artikel.forEach(a => {
-        if (a.lagerort?.[old.standortId] === old.name) a.lagerort[old.standortId] = name;
+        if (locHas(a, old.standortId, old.name)) (_renamed[a.id] = locRename(a, old.standortId, old.name, name));
       });
     }
     const idx = D.lagerplaetze.findIndex(x=>x.id===id);
@@ -151,7 +152,7 @@ function saveLagerplatz(id, isEdit) {
   // If renamed, also sync affected articles
   if (isEdit) {
     D.artikel.forEach(a => {
-      if (a.lagerort?.[f.standortId] === name && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[f.standortId],fields:["lagerort"]}).catch(e => console.error("sbArt:", e));
+      if (a.id in _renamed && typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[f.standortId],fields:_renamed[a.id]?["lagerort","split"]:["lagerort"]}).catch(e => console.error("sbArt:", e));
     });
   }
 }
@@ -159,14 +160,15 @@ function saveLagerplatz(id, isEdit) {
 function delLagerplatz(id) {
   const lp = D.lagerplaetze.find(x=>x.id===id);
   if (!lp) return;
-  const artCount = D.artikel.filter(a => a.lagerort?.[lp.standortId] === lp.name).length;
+  const artCount = D.artikel.filter(a => locHas(a, lp.standortId, lp.name)).length;
   let label = `${LANG==="vi"?"Xóa":"Löschen"}: ${lp.name}?`;
   if (artCount) label += `\n\n⚠ ${artCount} ${t("c.article")} ${LANG==="vi"?"đang được gán — sẽ bị xóa Lagerort":"zugeordnet — Lagerort wird entfernt"}`;
 
   cConfirm(label, () => {
     // Remove lagerort from articles
-    const affected = D.artikel.filter(a => a.lagerort?.[lp.standortId] === lp.name);
-    affected.forEach(a => { a.lagerort[lp.standortId] = ""; });
+    const affected = D.artikel.filter(a => locHas(a, lp.standortId, lp.name));
+    const wasSplit = {};
+    affected.forEach(a => { wasSplit[a.id] = locRename(a, lp.standortId, lp.name, ""); });
     // Remove from standort array
     const st = D.standorte.find(s=>s.id===lp.standortId);
     if (st?.lagerplaetze) st.lagerplaetze = st.lagerplaetze.filter(n=>n!==lp.name);
@@ -177,7 +179,7 @@ function delLagerplatz(id) {
     if (typeof sbDeleteLagerplatz === "function") sbDeleteLagerplatz(id);
     // Sync nur betroffene Artikel, nur Lagerort dieses Standorts
     affected.forEach(a => {
-      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[lp.standortId],fields:["lagerort"]}).catch(e => console.error("sbArt:", e));
+      if (typeof sbSaveArtikel === "function") sbSaveArtikel(a, {meta:false,sids:[lp.standortId],fields:wasSplit[a.id]?["lagerort","split"]:["lagerort"]}).catch(e => console.error("sbArt:", e));
     });
   });
 }

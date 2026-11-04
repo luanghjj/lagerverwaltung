@@ -153,7 +153,7 @@ function renderInvTable(arts, stId) {
     h += `<tr style="border-bottom:1px solid var(--bd);${rowBg}">`;
     h += `<td><div class="th" style="width:28px;height:28px">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:`<span style="font-size:10px;color:var(--t3)">${isDone?(diff===0?"✓":"⚠"):"○"}</span>`}</div></td>`;
     h += `<td style="font-weight:600">${esc(artN(a))}<div style="font-size:9.5px;font-family:var(--m);color:var(--t3)">${esc(a.sku)}</div></td>`;
-    h += `<td class="mob-hide"><span class="loc-tag">${esc(a.lagerort?.[stId]||"—")}</span></td>`;
+    h += `<td class="mob-hide"><span class="loc-tag">${esc(locLabel(a, stId)||"—")}</span></td>`;
     h += `<td style="text-align:right;font-family:var(--m)">${sysIst} ${esc(a.einheit)}</td>`;
     h += `<td style="text-align:center"><input class="inp inv-input" type="number" min="0" value="${gezählt!==undefined?gezählt:""}" placeholder="—" onchange="invCount('${a.id}',this.value,'${stId}')" style="width:70px;text-align:center;padding:5px;font-family:var(--m);font-size:14px;font-weight:700;border:2px solid ${isDone?(diff===0?"var(--gn)":"var(--yl)"):"var(--bd)"}"></td>`;
     h += `<td style="text-align:right;font-family:var(--m);font-weight:700;color:${diff===null?"var(--t3)":diff===0?"var(--gn)":diff>0?"var(--ac)":"var(--rd)"}">${diff===null?"—":diff>0?"+"+diff:diff}</td>`;
@@ -248,7 +248,7 @@ function finishInventur() {
 
       if (v.diff !== 0) {
         // Correct stock
-        a.istBestand[stId] = v.gezählt;
+        locSetIst(a, stId, v.gezählt);
         diffLog.push({ name: artN(a), sysIst, gezählt: v.gezählt, diff: v.diff });
         // Log correction
         const bew = {

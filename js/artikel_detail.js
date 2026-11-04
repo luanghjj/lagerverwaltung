@@ -64,7 +64,7 @@ function showArtikelDetail(id) {
     const fehl = Math.max(1, soll-ist);
     // Lieferant selector
     const liefOpts = a.lieferanten.map(al => { const l=D.lieferanten.find(x=>x.id===al.lieferantId); return `<option value="${al.lieferantId}">${esc(l?.name||"?")}${canP()?" ("+al.preis.toFixed(2)+"€)":""}</option>`; }).join("");
-    h += `<div class="cd"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="min-width:100px"><div style="font-weight:600;font-size:12.5px">${esc(s.name)}</div><span class="loc-tag" style="margin-top:2px">${esc(a.lagerort?.[s.id]||"—")}</span></div><div style="flex:1;min-width:110px">${stkBar(ist,soll,min,a.einheit)}${conv?`<div class="unit-conv">= ${esc(conv)}</div>`:""}</div>`;
+    h += `<div class="cd"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="min-width:100px"><div style="font-weight:600;font-size:12.5px">${esc(s.name)}</div><span class="loc-tag" style="margin-top:2px">${esc(locLabel(a, s.id)||"—")}</span></div><div style="flex:1;min-width:110px">${stkBar(ist,soll,min,a.einheit)}${conv?`<div class="unit-conv">= ${esc(conv)}</div>`:""}</div>`;
 
     // Quick booking: direct quantity input + book buttons
     const canWE = can(U.role,"eingang"), canWA = can(U.role,"ausgang");
@@ -72,6 +72,7 @@ function showArtikelDetail(id) {
       h += `<div style="display:flex;gap:3px;align-items:center;flex-shrink:0">`;
       if (canWA) h += `<button class="btn btn-o" onclick="event.stopPropagation();quickBook('${a.id}','${s.id}','ausgang',parseInt(document.getElementById('qb_${s.id}')?.value)||1)" style="padding:6px 10px;font-size:13px;font-weight:800;min-width:36px;justify-content:center;color:var(--rd)"${ist<=0?' disabled style="opacity:.3"':""}>↑</button>`;
       h += `<input class="inp" type="number" min="1" value="1" id="qb_${s.id}" style="width:50px;text-align:center;padding:6px 2px;font-family:var(--m);font-size:15px;font-weight:700" onclick="event.stopPropagation();this.select()">`;
+      h += locSelectHtml(a, s.id, `qbort_${s.id}`, "", "", "font-size:11px;padding:6px 4px;max-width:130px");
       if (canWE) h += `<button class="btn btn-o" onclick="event.stopPropagation();quickBook('${a.id}','${s.id}','eingang',parseInt(document.getElementById('qb_${s.id}')?.value)||1)" style="padding:6px 10px;font-size:13px;font-weight:800;min-width:36px;justify-content:center;color:var(--gn)">↓</button>`;
       h += `</div>`;
     }
@@ -151,7 +152,7 @@ function addInterTransfer(artId, vonStId) {
       : `${actualQty} ${a?.einheit} ${artN(a)} von ${vonName} → ${nachName} umbuchen?`,
     () => {
       if (!D.transfers) D.transfers = [];
-      a.istBestand[vonStId] = vonIst - actualQty;
+      locSetIst(a, vonStId, vonIst - actualQty);
       D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:artId, standortId:vonStId, zielStandortId:nachStId, menge:actualQty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"" });
       D.transfers.unshift({ id:uid(), vonId:vonStId, nachId:nachStId, items:[{artId,menge:actualQty}], status:"unterwegs", datum:nw(), benutzer:U.id });
       save(); closeModal(); render();
@@ -238,17 +239,16 @@ function editArtikel(id) {
   // Stock per location (only user's standorte)
   const aeStandorte = U.standorte.includes("all") ? D.standorte.filter(s=>s.aktiv) : D.standorte.filter(s=>s.aktiv && U.standorte.includes(s.id));
   h += `<div style="font-size:9.5px;font-weight:700;color:var(--t2);margin:8px 0 4px;text-transform:uppercase">${LANG==="vi"?"Tồn kho theo CN":"Bestände pro Standort"}</div>`;
+  // Lagerorte pro Standort (eine oder mehrere Zeilen Lagerort/IST/SOLL), Zustand in window._aeLoc
+  window._aeLoc = {};
   aeStandorte.forEach(s => {
+    window._aeLoc[s.id] = locRows(f, s.id);
     h += `<div style="margin-bottom:6px"><div style="font-size:10px;font-weight:600;margin-bottom:2px;color:var(--ac)">${esc(s.name)}</div><div class="g4">`;
     h += `<div class="fg"><label>${t("a.stock")}</label><input class="inp" type="number" id="ae_ist_${s.id}" value="${f.istBestand[s.id]||""}"></div>`;
     h += `<div class="fg"><label>${t("a.target")}</label><input class="inp" type="number" id="ae_soll_${s.id}" value="${f.sollBestand[s.id]||""}"></div>`;
     h += `<div class="fg"><label>${t("a.minimum")}</label><input class="inp" type="number" id="ae_min_${s.id}" value="${f.mindestmenge[s.id]||""}"></div>`;
-    const lpOpts = (D.lagerplaetze||[]).filter(lp=>lp.standortId===s.id).map(lp => `<option value="${esc(lp.name)}" ${f.lagerort?.[s.id]===lp.name?"selected":""}>${esc(lp.name)}</option>`).join("");
-    // Lagerort, der (noch) kein Lagerplatz ist, als Option behalten – sonst würde Speichern ihn löschen
-    const curLoc = f.lagerort?.[s.id] || "";
-    const extraOpt = curLoc && !(D.lagerplaetze||[]).some(lp=>lp.standortId===s.id && lp.name===curLoc) ? `<option value="${esc(curLoc)}" selected>${esc(curLoc)}</option>` : "";
-    h += `<div class="fg"><label>${t("c.storageloc")}</label><select class="sel" id="ae_loc_${s.id}"><option value="">— ${LANG==="vi"?"Chọn":"Wählen"} —</option>${extraOpt}${lpOpts}</select></div>`;
-    h += `</div></div>`;
+    h += `<div class="fg" id="ae_loccell_${s.id}"></div>`;
+    h += `</div><div id="ae_locrows_${s.id}"></div></div>`;
   });
 
   // Suppliers
@@ -267,6 +267,91 @@ function editArtikel(id) {
   window._aeNameDupConfirmed = false;
   window._aeSollWarnConfirmed = false;
   document.body.insertAdjacentHTML("beforeend", h);
+  aeStandorte.forEach(s => aeLocRender(s.id));
+}
+
+// ── Lagerorte im Editor ──
+function aeLocOpts(sid, cur) {
+  const lps = (D.lagerplaetze||[]).filter(lp=>lp.standortId===sid);
+  // Lagerort, der (noch) kein Lagerplatz ist, als Option behalten – sonst würde Speichern ihn löschen
+  const extra = cur && !lps.some(lp=>lp.name===cur) ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : "";
+  return `<option value="">— ${LANG==="vi"?"Chọn":"Wählen"} —</option>${extra}${lps.map(lp => `<option value="${esc(lp.name)}" ${cur===lp.name?"selected":""}>${esc(lp.name)}</option>`).join("")}`;
+}
+// Formularwerte → window._aeLoc[sid]
+function aeLocRead(sid) {
+  const rows = window._aeLoc?.[sid];
+  if (!rows) return;
+  const num = id => parseInt(document.getElementById(id)?.value) || 0;
+  if (rows.length > 1) {
+    rows.forEach((r, i) => {
+      r.ort = document.getElementById(`ae_lr_ort_${sid}_${i}`)?.value || "";
+      r.ist = num(`ae_lr_ist_${sid}_${i}`);
+      r.soll = num(`ae_lr_soll_${sid}_${i}`);
+    });
+  } else {
+    rows[0].ort = document.getElementById(`ae_loc_${sid}`)?.value || "";
+    rows[0].ist = num(`ae_ist_${sid}`);
+    rows[0].soll = num(`ae_soll_${sid}`);
+  }
+}
+function aeLocSum(sid) {
+  aeLocRead(sid);
+  const rows = window._aeLoc[sid];
+  const ist = document.getElementById(`ae_ist_${sid}`), soll = document.getElementById(`ae_soll_${sid}`);
+  if (ist) ist.value = rows.reduce((x, r) => x + r.ist, 0);
+  if (soll) soll.value = rows.reduce((x, r) => x + r.soll, 0);
+}
+function aeLocRender(sid) {
+  const rows = window._aeLoc?.[sid];
+  const cell = document.getElementById(`ae_loccell_${sid}`), box = document.getElementById(`ae_locrows_${sid}`);
+  if (!rows || !cell || !box) return;
+  const multi = rows.length > 1;
+  const vi = LANG === "vi";
+  const lpCount = (D.lagerplaetze||[]).filter(lp=>lp.standortId===sid).length;
+  const addBtn = `<button type="button" class="btn btn-o btn-sm" onclick="aeLocAdd('${sid}')" style="margin-top:3px">+ ${t("c.storageloc")}</button>`;
+  // IST/SOLL des Standorts: bei mehreren Lagerorten = Summe, nicht direkt änderbar
+  ["ist", "soll"].forEach(k => {
+    const el = document.getElementById(`ae_${k}_${sid}`);
+    if (!el) return;
+    el.readOnly = multi;
+    el.style.opacity = multi ? ".6" : "";
+    el.title = multi ? (vi ? "Tổng các Lagerort" : "Summe aller Lagerorte") : "";
+    el.value = multi ? rows.reduce((x, r) => x + r[k], 0) : (rows[0][k] || "");
+  });
+  if (!multi) {
+    cell.innerHTML = `<label>${t("c.storageloc")}</label><select class="sel" id="ae_loc_${sid}">${aeLocOpts(sid, rows[0].ort)}</select>`;
+    box.innerHTML = lpCount > 1 ? addBtn : "";
+    return;
+  }
+  cell.innerHTML = `<label>${t("c.storageloc")}</label><div style="font-size:11px;color:var(--t2);padding:8px 0">${rows.length} ${vi ? "vị trí · tổng ở bên trái" : "Lagerorte · Summe links"}</div>`;
+  let h = `<div style="margin:2px 0 0 8px;padding-left:8px;border-left:2px solid var(--bd)">`;
+  rows.forEach((r, i) => {
+    h += `<div style="display:flex;gap:5px;align-items:center;margin-bottom:3px">`;
+    h += `<select class="sel" style="flex:2;min-width:0" id="ae_lr_ort_${sid}_${i}">${aeLocOpts(sid, r.ort)}</select>`;
+    h += `<input class="inp" style="flex:1;min-width:0" type="number" id="ae_lr_ist_${sid}_${i}" value="${r.ist||""}" placeholder="${t("a.stock")}" title="${t("a.stock")}" oninput="aeLocSum('${sid}')">`;
+    h += `<input class="inp" style="flex:1;min-width:0" type="number" id="ae_lr_soll_${sid}_${i}" value="${r.soll||""}" placeholder="${t("a.target")}" title="${t("a.target")}" oninput="aeLocSum('${sid}')">`;
+    h += `<button type="button" class="bi dn" onclick="aeLocRem('${sid}',${i})" title="${t("c.delete")}">✕</button></div>`;
+  });
+  h += `<div style="display:flex;gap:5px;font-size:9.5px;color:var(--t3);margin-bottom:2px"><span style="flex:2">${t("c.storageloc")}</span><span style="flex:1">${t("a.stock")}</span><span style="flex:1">${t("a.target")}</span><span style="width:24px"></span></div>`;
+  h += addBtn + `</div>`;
+  box.innerHTML = h;
+}
+function aeLocAdd(sid) {
+  aeLocRead(sid);
+  const rows = window._aeLoc[sid];
+  const used = rows.map(r => r.ort);
+  const next = (D.lagerplaetze||[]).find(lp => lp.standortId === sid && !used.includes(lp.name));
+  rows.push({ ort: next?.name || "", ist: 0, soll: 0 });
+  aeLocRender(sid);
+}
+function aeLocRem(sid, i) {
+  aeLocRead(sid);
+  const rows = window._aeLoc[sid];
+  const r = rows[i];
+  const go = () => { rows.splice(i, 1); aeLocRender(sid); };
+  // Bestand des entfernten Lagerorts würde aus der Summe verschwinden → nachfragen
+  if (r && r.ist) cConfirm(LANG==="vi" ? `Xóa ${r.ort||"—"}? IST ${r.ist} sẽ bị trừ khỏi tổng.` : `${r.ort||"—"} entfernen? IST ${r.ist} wird von der Summe abgezogen.`, go);
+  else go();
 }
 
 // Article editor helpers
@@ -457,13 +542,17 @@ function aeSave(id, isEdit) {
 
   // Stock per location (only user's standorte)
   const aeStandorte = U.standorte.includes("all") ? D.standorte.filter(s=>s.aktiv) : D.standorte.filter(s=>s.aktiv && U.standorte.includes(s.id));
-  aeStandorte.forEach(s => {
-    f.istBestand[s.id] = parseInt($(`#ae_ist_${s.id}`)?.value) || 0;
-    f.sollBestand[s.id] = parseInt($(`#ae_soll_${s.id}`)?.value) || 0;
+  for (const s of aeStandorte) {
+    aeLocRead(s.id);
+    const rows = window._aeLoc?.[s.id] || [{ ort: "", ist: 0, soll: 0 }];
+    if (rows.length > 1) {
+      if (rows.some(r => !r.ort)) { toast(`${s.name}: ${LANG==="vi"?"Chọn Lagerort cho mỗi dòng":"Bitte für jede Zeile einen Lagerort wählen"}`,"e"); return; }
+      const dup = rows.find((r, i) => rows.findIndex(x => x.ort === r.ort) !== i);
+      if (dup) { toast(`${s.name}: ${LANG==="vi"?"Lagerort bị trùng":"Lagerort doppelt"}: ${dup.ort}`,"e"); return; }
+    }
     f.mindestmenge[s.id] = parseInt($(`#ae_min_${s.id}`)?.value) || 0;
-    f.lagerort = f.lagerort || {};
-    f.lagerort[s.id] = $(`#ae_loc_${s.id}`)?.value || "";
-  });
+    locStore(f, s.id, rows); // setzt IST/SOLL (Summe), Lagerort (erster) und ggf. Aufteilung
+  }
 
   // Warning: no Soll/Min set (non-blocking, only for new articles)
   if (!isEdit && !window._aeSollWarnConfirmed) {
@@ -501,16 +590,15 @@ function aeSave(id, isEdit) {
     const idx = D.artikel.findIndex(x=>x.id===id);
     const cur = idx >= 0 ? D.artikel[idx] : null;
     const orig = window._aeOrig || {};
-    const MAP = { ist: "istBestand", soll: "sollBestand", min: "mindestmenge", lagerort: "lagerort" };
+    const MAP = { ist: "istBestand", soll: "sollBestand", min: "mindestmenge", lagerort: "lagerort", split: "lagerortSplit" };
     // Nur Felder übernehmen, die im Formular geändert wurden; alles andere bleibt auf dem aktuellen Stand
     D.standorte.forEach(s => {
       Object.entries(MAP).forEach(([k, prop]) => {
         f[prop] = f[prop] || {};
-        const was = (orig[prop] || {})[s.id], now = f[prop][s.id];
-        const norm = v => k === "lagerort" ? (v || "") : (v || 0);
-        const changed = aeStandorte.some(x => x.id === s.id) && norm(was) !== norm(now);
+        const norm = k === "split" ? (x => JSON.stringify(locSplitDb(x, s.id))) : (x => { const v = (x[prop] || {})[s.id]; return k === "lagerort" ? (v || "") : (v || 0); });
+        const changed = aeStandorte.some(x => x.id === s.id) && norm(orig) !== norm(f);
         if (changed) (_bestChanges[s.id] = _bestChanges[s.id] || []).push(k);
-        else if (cur) { if (cur[prop] && s.id in cur[prop]) f[prop][s.id] = cur[prop][s.id]; else delete f[prop][s.id]; }
+        else if (cur) { if (cur[prop] && s.id in cur[prop]) f[prop][s.id] = JSON.parse(JSON.stringify(cur[prop][s.id])); else delete f[prop][s.id]; }
       });
     });
     if (idx >= 0) D.artikel[idx] = f;
@@ -540,7 +628,7 @@ function aeSave(id, isEdit) {
     f.createdBy = U.id;
     f.rejectedReason = "";
     D.artikel.push(f);
-    D.standorte.filter(s => s.aktiv).forEach(s => { _bestChanges[s.id] = ["ist", "soll", "min", "lagerort"]; });
+    D.standorte.filter(s => s.aktiv).forEach(s => { _bestChanges[s.id] = ["ist", "soll", "min", "lagerort", "split"]; });
   }
   // Update Bereiche membership (Admin/Manager only)
   const _changedBereiche = [];
@@ -560,8 +648,8 @@ function aeSave(id, isEdit) {
   render();
   if (typeof sbSaveArtikel === "function") {
     const _err = e => { console.error("sbSaveArtikel:", e); toast(LANG==="vi"?"⚠ Lỗi lưu lên server":"⚠ Speichern auf Server fehlgeschlagen","e"); };
-    sbSaveArtikel(f, { sids: Object.keys(_bestChanges).filter(sid => _bestChanges[sid].length === 4) , fields: ["ist","soll","min","lagerort"] }).then(() =>
-      Promise.all(Object.entries(_bestChanges).filter(([, fl]) => fl.length < 4).map(([sid, fl]) => sbSaveArtikel(f, { meta: false, sids: [sid], fields: fl })))
+    sbSaveArtikel(f, { sids: Object.keys(_bestChanges).filter(sid => _bestChanges[sid].length === 5) , fields: ["ist","soll","min","lagerort","split"] }).then(() =>
+      Promise.all(Object.entries(_bestChanges).filter(([, fl]) => fl.length < 5).map(([sid, fl]) => sbSaveArtikel(f, { meta: false, sids: [sid], fields: fl })))
     ).catch(_err);
   }
   _changedBereiche.forEach(br => { if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e)); });
@@ -618,8 +706,8 @@ function quickBook(artId, stId, typ, menge) {
   const isE = typ === "eingang";
   const ist = a.istBestand[stId] || 0;
   if (!isE && ist < menge) { toast(LANG==="vi"?"Không đủ hàng":"Kein Bestand","e"); return; }
-  if (isE) a.istBestand[stId] = ist + menge;
-  else a.istBestand[stId] = Math.max(0, ist - menge);
+  const ort = document.getElementById(`qbort_${stId}`)?.value || "";
+  locSetIst(a, stId, isE ? ist + menge : Math.max(0, ist - menge), ort);
   const _qbBew = { id:uid(), typ, artikelId:artId, standortId:stId, menge, datum:nw(), benutzer:U.id, referenz:"QUICK", notiz:"", lieferantId:"" };
   D.bewegungen.unshift(_qbBew);
   save();

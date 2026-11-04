@@ -463,7 +463,7 @@ function submitGroup(liefKey) {
     const a = D.artikel.find(x=>x.id===it.artikelId);
     const s = D.standorte.find(x=>x.id===it.standortId);
     const al = a?.lieferanten.find(x=>x.lieferantId===it.lieferantId);
-    return { art: a, standort: s, menge: it.menge, einheit: a?.einheit||"", preis: al?.preis||0, artNr: al?.artNr||"", lagerort: a?.lagerort?.[it.standortId]||"" };
+    return { art: a, standort: s, menge: it.menge, einheit: a?.einheit||"", preis: al?.preis||0, artNr: al?.artNr||"", lagerort: a ? locLabel(a, it.standortId) : "" };
   });
   const total = rows.reduce((s,r)=>s+r.preis*r.menge,0);
 
@@ -534,7 +534,7 @@ function getOrderData(liefKey) {
     const a = D.artikel.find(x=>x.id===it.artikelId);
     const s = D.standorte.find(x=>x.id===it.standortId);
     const al = a?.lieferanten.find(x=>x.lieferantId===it.lieferantId);
-    return { artikel: artN(a), sku: a?.sku||"", artNr: al?.artNr||"", standort: s?.name||"", lagerort: a?.lagerort?.[it.standortId]||"", menge: it.menge, einheit: a?.einheit||"", preis: al?.preis||0, wert: (al?.preis||0)*it.menge, lief: lief?.name||"" };
+    return { artikel: artN(a), sku: a?.sku||"", artNr: al?.artNr||"", standort: s?.name||"", lagerort: a ? locLabel(a, it.standortId) : "", menge: it.menge, einheit: a?.einheit||"", preis: al?.preis||0, wert: (al?.preis||0)*it.menge, lief: lief?.name||"" };
   });
 }
 

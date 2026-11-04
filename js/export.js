@@ -17,7 +17,7 @@ function exportExcel() {
   xml += "<Row>" + hdr.map(h=>`<Cell ss:StyleID="hd"><Data ss:Type="String">${esc(h)}</Data></Cell>`).join("") + "</Row>";
   D.artikel.forEach(a => { sids.forEach(sid => {
     const st=D.standorte.find(s=>s.id===sid);const ist=a.istBestand[sid]||0;const soll=a.sollBestand[sid]||0;const min=a.mindestmenge[sid]||0;const conv=formatUnitConv(ist,a);const bp=a.lieferanten.length?Math.min(...a.lieferanten.map(l=>l.preis)):0;const wert=(ist*bp);
-    const row=[a.sku,artN(a),st?.name||"",a.lagerort?.[sid]||"",a.einheit,ist,conv,soll,min,bp,wert];
+    const row=[a.sku,artN(a),st?.name||"",locLabel(a, sid),a.einheit,ist,conv,soll,min,bp,wert];
     xml += "<Row>" + row.map((v,i)=>typeof v==="number"?`<Cell ss:StyleID="num"><Data ss:Type="Number">${v}</Data></Cell>`:`<Cell><Data ss:Type="String">${esc(String(v))}</Data></Cell>`).join("") + "</Row>";
   });});
   xml += "</Table></Worksheet></Workbook>";
@@ -34,7 +34,7 @@ function exportPDF() {
   let tw = 0;
   D.artikel.forEach(a => { sids.forEach(sid => {
     const st=D.standorte.find(s=>s.id===sid);const ist=a.istBestand[sid]||0;const soll=a.sollBestand[sid]||0;const min=a.mindestmenge[sid]||0;const conv=formatUnitConv(ist,a);const bp=a.lieferanten.length?Math.min(...a.lieferanten.map(l=>l.preis)):0;const wert=ist*bp;tw+=wert;
-    html += `<tr><td class="mono">${esc(a.sku)}</td><td>${esc(artN(a))}</td><td>${esc(st?.name||"")}</td><td>${esc(a.lagerort?.[sid]||"—")}</td><td>${esc(a.einheit)}</td><td class="r mono${ist<=min?" crit":""}">${ist}</td><td class="r">${esc(conv)}</td><td class="r mono">${soll}</td><td class="r mono">${min}</td><td class="r mono">${wert.toFixed(2)} €</td></tr>`;
+    html += `<tr><td class="mono">${esc(a.sku)}</td><td>${esc(artN(a))}</td><td>${esc(st?.name||"")}</td><td>${esc(locLabel(a, sid)||"—")}</td><td>${esc(a.einheit)}</td><td class="r mono${ist<=min?" crit":""}">${ist}</td><td class="r">${esc(conv)}</td><td class="r mono">${soll}</td><td class="r mono">${min}</td><td class="r mono">${wert.toFixed(2)} €</td></tr>`;
   });});
   html += `</tbody><tfoot><tr><td colspan="9" style="text-align:right;font-weight:bold;padding-top:8px">Gesamt:</td><td class="r mono" style="font-weight:bold;padding-top:8px">${tw.toFixed(2)} €</td></tr></tfoot></table></body></html>`;
   openPrintHTML(html);

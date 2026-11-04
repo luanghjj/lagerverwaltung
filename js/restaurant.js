@@ -183,7 +183,7 @@ function renderAnfTable(items, brId) {
   sorted.forEach(it => {
     const i = it._idx;
     const isEmpty = it.lagerIst <= 0;
-    const lagerort = it.art?.lagerort?.[it.quelleId||stId] || "";
+    const lagerort = it.art ? locLabel(it.art, it.quelleId||stId) : "";
     const fehl = Math.max(0, it.soll - it.lagerIst);
 
     // Category header (only in "kat" mode)
@@ -732,7 +732,7 @@ function renderRstAuffuellung(vS, aS) {
         const a = D.artikel.find(x=>x.id===it.artikelId);
         const qId = it.quelleId || anf.standortId;
         const lagerIst = a?.istBestand[qId]||0;
-        const lagerort = a?.lagerort?.[qId]||"";
+        const lagerort = a ? locLabel(a, qId) : "";
         const isExtern = qId !== anf.standortId;
         const quelleName = isExtern ? (D.standorte.find(s=>s.id===qId)?.name||"") : "";
         const maxFill = Math.min(it.menge, lagerIst);
@@ -812,7 +812,7 @@ function confirmAnforderung(anfId) {
     fillData.forEach(d => {
       if (d.fillQty <= 0 || !d.art) return;
       const qId = d.quelleId;
-      d.art.istBestand[qId] = Math.max(0, d.lagerIst - d.fillQty);
+      locSetIst(d.art, qId, Math.max(0, d.lagerIst - d.fillQty));
       if (!_sumByQ[qId]) _sumByQ[qId] = { lines: [], changes: [] };
       _sumByQ[qId].lines.push({a:d.art, menge:d.fillQty});
       _sumByQ[qId].changes.push({a:d.art, alt:d.lagerIst, neu:d.art.istBestand[qId]});
@@ -858,7 +858,7 @@ function undoAuffuellung(afId) {
       // Zurück an das Lager, aus dem aufgefüllt wurde (nicht das des Bereichs)
       const srcBew = D.bewegungen.find(b => b.typ === "ausgang" && b.artikelId === af.artikelId && (b.referenz||"").startsWith("RST-") && b.datum === af.datum && b.menge === af.menge);
       const stId = af.quelleId || srcBew?.standortId || br?.standortId || D.standorte[0]?.id || "";
-      a.istBestand[stId] = (a.istBestand[stId]||0) + af.menge;
+      locSetIst(a, stId, (a.istBestand[stId]||0) + af.menge);
       _undoBew = { id: uid(), typ: "eingang", artikelId: af.artikelId, standortId: stId, menge: af.menge, datum: nw(), benutzer: U.id, referenz: `UNDO-RST`, notiz: `${LANG==="vi"?"Hoàn tác bổ sung":"Auffüllung rückgängig"}: ${br?(LANG==="vi"&&br.name_vi?br.name_vi:br.name):""}`, lieferantId: "" };
       D.bewegungen.unshift(_undoBew);
     }

@@ -252,7 +252,7 @@ function execTransfer() {
       const qty = Math.min(b.menge, vonIst);
       if (qty <= 0) return;
       // Deduct from source immediately
-      a.istBestand[vonId] = vonIst - qty;
+      locSetIst(a, vonId, vonIst - qty);
       _sumLines.push({a, menge:qty});
       _sumChanges.push({a, alt:vonIst, neu:a.istBestand[vonId]});
       D.bewegungen.unshift({ id:uid(), typ:"umbuchung", artikelId:b.artId, standortId:vonId, zielStandortId:nachId, menge:qty, datum:nw(), benutzer:U.id, referenz:`UB→${nachName}`, notiz:LANG==="vi"?"Chờ xác nhận":"Wartet auf Bestätigung", lieferantId:"" });
@@ -357,7 +357,7 @@ function confirmTransfer(tfId, itemCount) {
       // Book received qty at target
       if (e.empfangen > 0) {
         const alt = a.istBestand[tf.nachId]||0;
-        a.istBestand[tf.nachId] = (a.istBestand[tf.nachId]||0) + e.empfangen;
+        locSetIst(a, tf.nachId, (a.istBestand[tf.nachId]||0) + e.empfangen);
         _sumLines.push({a, menge:e.empfangen});
         _sumChanges.push({a, alt, neu:a.istBestand[tf.nachId]});
         const bew = { id:uid(), typ:"eingang", artikelId:e.artId, standortId:tf.nachId, menge:e.empfangen, datum:nw(), benutzer:U.id, referenz:`UB←${von?.name}`, notiz:`Transfer ${von?.name}→${nach?.name}`, lieferantId:"" };
@@ -368,7 +368,7 @@ function confirmTransfer(tfId, itemCount) {
       // Return shortage to source
       if (e.diff < 0) {
         const fehlMenge = Math.abs(e.diff);
-        a.istBestand[tf.vonId] = (a.istBestand[tf.vonId]||0) + fehlMenge;
+        locSetIst(a, tf.vonId, (a.istBestand[tf.vonId]||0) + fehlMenge);
         _sumExtra.push(`•  ${artN(a)}: ${LANG==="vi"?"thiếu, trả lại":"Fehlmenge zurück an"} ${von?.name||""} +${fmtQtyUnit(fehlMenge, a)}`);
         const bew = { id:uid(), typ:"korrektur_plus", artikelId:e.artId, standortId:tf.vonId, menge:fehlMenge, datum:nw(), benutzer:U.id, referenz:`UB↩ Fehl`, notiz:`Fehlmenge Transfer→${nach?.name}: ${e.gesendet} gesendet, ${e.empfangen} empfangen`, lieferantId:"" };
         D.bewegungen.unshift(bew);
@@ -412,7 +412,7 @@ function rejectTransfer(tfId) {
     tf.items.forEach(it => {
       const a = D.artikel.find(x=>x.id===it.artId);
       if (!a) return;
-      a.istBestand[tf.vonId] = (a.istBestand[tf.vonId]||0) + it.menge;
+      locSetIst(a, tf.vonId, (a.istBestand[tf.vonId]||0) + it.menge);
       const bew = { id:uid(), typ:"korrektur_plus", artikelId:it.artId, standortId:tf.vonId, menge:it.menge, datum:nw(), benutzer:U.id, referenz:"UB↩", notiz:`Transfer komplett zurückgewiesen`, lieferantId:"" };
       D.bewegungen.unshift(bew);
       _newBews.push(bew);

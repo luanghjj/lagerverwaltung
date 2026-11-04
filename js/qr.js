@@ -44,7 +44,7 @@ function showLPQRCodes() {
     h += `<div id="lpQrGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">`;
     lps.forEach((lp, i) => {
       const st = D.standorte.find(s=>s.id===lp.standortId);
-      const artCount = D.artikel.filter(a=>a.lagerort?.[lp.standortId]===lp.name).length;
+      const artCount = D.artikel.filter(a=>locHas(a, lp.standortId, lp.name)).length;
       const qrData = `${baseURL}#standort=${lp.standortId}&ort=${encodeURIComponent(lp.name)}`;
       const qrImg = makeQR(qrData, 200);
       const tempIcon = lp.temperatur==="kuehl"?"❄️":lp.temperatur==="tk"?"🧊":lp.temperatur==="warm"?"🌡️":"🏠";
@@ -76,7 +76,7 @@ function showSingleLPQR(lpId) {
   if (!lp) return;
   const baseURL = getBaseURL();
   const st = D.standorte.find(s=>s.id===lp.standortId);
-  const artCount = D.artikel.filter(a=>a.lagerort?.[lp.standortId]===lp.name).length;
+  const artCount = D.artikel.filter(a=>locHas(a, lp.standortId, lp.name)).length;
   const qrData = `${baseURL}#standort=${lp.standortId}&ort=${encodeURIComponent(lp.name)}`;
   const qrImg = makeQR(qrData, 300);
   const tempIcon = lp.temperatur==="kuehl"?"❄️":lp.temperatur==="tk"?"🧊":lp.temperatur==="warm"?"🌡️":"🏠";
@@ -126,7 +126,7 @@ function printLPQRCodes() {
   html += `<div class="grid">`;
   lps.forEach(lp => {
     const st = D.standorte.find(s=>s.id===lp.standortId);
-    const artCount = D.artikel.filter(a=>a.lagerort?.[lp.standortId]===lp.name).length;
+    const artCount = D.artikel.filter(a=>locHas(a, lp.standortId, lp.name)).length;
     const qrData = `${baseURL}#standort=${lp.standortId}&ort=${encodeURIComponent(lp.name)}`;
     const qrImg = makeQR(qrData, 300);
     const tempIcon = lp.temperatur==="kuehl"?"❄️":lp.temperatur==="tk"?"🧊":lp.temperatur==="warm"?"🌡️":"🏠";
@@ -149,9 +149,9 @@ function showQRCodes() {
     locations.push({ standort: s, lagerort: null, label: s.name, sub: LANG==="vi"?"Toàn bộ chi nhánh":"Gesamter Standort" });
     // Lagerort-level QRs
     const orte = new Set();
-    D.artikel.forEach(a => { const lo = a.lagerort?.[s.id]; if (lo) orte.add(lo); });
+    D.artikel.forEach(a => locNames(a, s.id).forEach(lo => orte.add(lo)));
     [...orte].sort().forEach(ort => {
-      const artCount = D.artikel.filter(a => a.lagerort?.[s.id] === ort).length;
+      const artCount = D.artikel.filter(a => locHas(a, s.id, ort)).length;
       locations.push({ standort: s, lagerort: ort, label: ort, sub: `${s.name} · ${artCount} ${t("c.article")}` });
     });
   });
@@ -196,9 +196,9 @@ function printQRCodes() {
   D.standorte.forEach(s => {
     locations.push({ sId: s.id, sName: s.name, lagerort: null, label: s.name, sub: LANG==="vi"?"Toàn bộ":"Gesamt" });
     const orte = new Set();
-    D.artikel.forEach(a => { const lo = a.lagerort?.[s.id]; if (lo) orte.add(lo); });
+    D.artikel.forEach(a => locNames(a, s.id).forEach(lo => orte.add(lo)));
     [...orte].sort().forEach(ort => {
-      const artCount = D.artikel.filter(a => a.lagerort?.[s.id] === ort).length;
+      const artCount = D.artikel.filter(a => locHas(a, s.id, ort)).length;
       locations.push({ sId: s.id, sName: s.name, lagerort: ort, label: ort, sub: `${s.name} · ${artCount} Art.` });
     });
   });
@@ -238,7 +238,7 @@ function downloadQRAll() {
 
     // Lagerort QRs
     const orte = new Set();
-    D.artikel.forEach(a => { const lo = a.lagerort?.[s.id]; if (lo) orte.add(lo); });
+    D.artikel.forEach(a => locNames(a, s.id).forEach(lo => orte.add(lo)));
     [...orte].forEach(ort => {
       const qd = `${baseURL}#standort=${s.id}&ort=${encodeURIComponent(ort)}`;
       const im = makeQR(qd, 400);

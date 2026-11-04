@@ -4,10 +4,10 @@ function lpListFor(stId) {
   return (D.lagerplaetze || []).filter(lp => lp.standortId === stId).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 }
 
-function lpSyncArt(a) {
+function lpSyncArt(a, withSplit) {
   save();
   if (typeof sbSaveArtikel === "function") {
-    sbSaveArtikel(a, {meta:false,sids:[window._lpStId],fields:["lagerort"]}).catch(e => { console.error("sbSaveArtikel", e); toast(LANG==="vi"?"Lỗi lưu lên server":"Fehler beim Speichern auf Server","e"); });
+    sbSaveArtikel(a, {meta:false,sids:[window._lpStId],fields:withSplit?["lagerort","split"]:["lagerort"]}).catch(e => { console.error("sbSaveArtikel", e); toast(LANG==="vi"?"Lỗi lưu lên server":"Fehler beim Speichern auf Server","e"); });
   }
 }
 
@@ -41,9 +41,9 @@ function renderLPModal() {
   // Each Lagerplatz as expandable card
   lps.forEach((lpObj, idx) => {
     const lp = lpObj.name;
-    const arts = D.artikel.filter(a => a.lagerort?.[stId] === lp);
+    const arts = D.artikel.filter(a => locHas(a, stId, lp));
     // Alle Artikel zuweisbar (auch IST 0), mit Bestand zuerst
-    const unassigned = D.artikel.filter(a => a.lagerort?.[stId] !== lp)
+    const unassigned = D.artikel.filter(a => !locHas(a, stId, lp))
       .sort((a, b) => ((b.istBestand?.[stId]||0) > 0) - ((a.istBestand?.[stId]||0) > 0) || artN(a).localeCompare(artN(b)));
 
     h += `<div class="cd" style="margin-bottom:6px;border-left:3px solid var(--ac)">`;
@@ -60,7 +60,7 @@ function renderLPModal() {
       arts.forEach(a => {
         h += `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--bd)">`;
         h += `<div style="display:flex;align-items:center;gap:6px"><div class="th" style="width:24px;height:24px">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div><div><div style="font-weight:600;font-size:11.5px">${esc(artN(a))}</div><div style="font-size:9px;color:var(--t3);font-family:var(--m)">${esc(a.sku)} · ${a.istBestand?.[stId]||0} ${esc(a.einheit)}</div></div></div>`;
-        h += `<button class="bi dn" onclick="unassignFromLP('${a.id}','${stId}')" title="${LANG==="vi"?"Xóa khỏi vị trí":"Vom Platz entfernen"}">✕</button>`;
+        h += `<button class="bi dn" onclick="unassignFromLP('${a.id}','${stId}',${idx})" title="${LANG==="vi"?"Xóa khỏi vị trí":"Vom Platz entfernen"}">✕</button>`;
         h += `</div>`;
       });
     } else {
@@ -115,18 +115,19 @@ function removeLagerplatz(idx) {
   const lp = lpListFor(stId)[idx];
   if (!lp) return;
   const lpName = lp.name;
-  const affected = D.artikel.filter(a => a.lagerort?.[stId] === lpName);
+  const affected = D.artikel.filter(a => locHas(a, stId, lpName));
   const label = LANG==="vi"
     ? `Xóa "${lpName}"?${affected.length?` ${affected.length} SP sẽ mất vị trí kho.`:""}`
     : `"${lpName}" löschen?${affected.length?` ${affected.length} Artikel verlieren ihren Lagerort.`:""}`;
   cConfirm(label, () => {
     D.lagerplaetze = D.lagerplaetze.filter(x => x.id !== lp.id);
-    affected.forEach(a => { a.lagerort[stId] = ""; });
+    const wasSplit = {};
+    affected.forEach(a => { wasSplit[a.id] = locRename(a, stId, lpName, ""); });
     save();
     renderLPModal();
     toast("✓","i");
     if (typeof sbDeleteLagerplatz === "function") sbDeleteLagerplatz(lp.id).catch(e => console.error("sbDeleteLagerplatz", e));
-    affected.forEach(a => lpSyncArt(a));
+    affected.forEach(a => lpSyncArt(a, wasSplit[a.id]));
     if (typeof logActivity === "function") logActivity("settings", `Lagerplatz − ${lpName}`, { standortId: stId, artikel: affected.length });
   });
 }
@@ -138,9 +139,9 @@ function assignToLP(lpIdx, stId) {
   if (!artId) return;
   const a = D.artikel.find(x=>x.id===artId);
   if (!a) return;
-  if (!a.lagerort) a.lagerort = {};
-  a.lagerort[stId] = lp.name;
-  lpSyncArt(a);
+  // Erster (bzw. einziger) Lagerort wird auf diesen Platz gesetzt
+  const wasSplit = locRename(a, stId, a.lagerort?.[stId] || "", lp.name);
+  lpSyncArt(a, wasSplit);
   renderLPModal();
   // Karte offen lassen, damit man weiter zuweisen kann
   const det = document.getElementById(`lp_det_${lpIdx}`); if (det) det.style.display = "";
@@ -148,12 +149,12 @@ function assignToLP(lpIdx, stId) {
   if (typeof logActivity === "function") logActivity("art.edit", `${artN(a)} → 📦 ${lp.name}`, { artikelId: a.id, standortId: stId, lagerort: lp.name });
 }
 
-function unassignFromLP(artId, stId) {
+function unassignFromLP(artId, stId, lpIdx) {
   const a = D.artikel.find(x=>x.id===artId);
   if (!a) return;
-  const old = a.lagerort?.[stId] || "";
-  if (a.lagerort) a.lagerort[stId] = "";
-  lpSyncArt(a);
+  const old = lpListFor(stId)[lpIdx]?.name ?? (a.lagerort?.[stId] || "");
+  const wasSplit = locRename(a, stId, old, "");
+  lpSyncArt(a, wasSplit);
   const openIdx = lpListFor(stId).findIndex(lp => lp.name === old);
   renderLPModal();
   const det = document.getElementById(`lp_det_${openIdx}`); if (det) det.style.display = "";

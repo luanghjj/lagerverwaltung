@@ -306,6 +306,7 @@ function delStandort(id) {
     D.artikel.forEach(a => {
       delete a.istBestand[id]; delete a.sollBestand[id]; delete a.mindestmenge[id];
       if (a.lagerort) delete a.lagerort[id];
+      if (a.lagerortSplit) delete a.lagerortSplit[id];
     });
     D.users.forEach(u => { u.standorte = u.standorte.filter(x => x !== id); if (!u.standorte.length) u.standorte = ["all"]; });
     save(); render(); toast("✓", "i");

@@ -101,7 +101,7 @@ function renderArtikelTable(fil, stC, aS) {
 
   sorted.forEach(a => {
     const bp = a.lieferanten.length ? Math.min(...a.lieferanten.map(l=>l.preis)) : null;
-    const locStr = aS ? (a.lagerort?.[aS]||"—") : stC.map(s=>a.lagerort?.[s.id]).filter(Boolean).join(" | ") || "—";
+    const locStr = (aS ? locLabel(a, aS) : locLabelAll(a, stC.map(s=>s.id))) || "—";
     const artStatus = a.status || "active";
     const statusBadge = artStatus === "pending" ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">🟡 ${t("art.pending")}</span>` : artStatus === "rejected" ? `<span style="font-size:9px;padding:1px 5px;background:var(--rA);color:var(--rd);border-radius:3px;font-weight:700;margin-left:4px">🔴 ${t("art.rejected")}</span>` : "";
     const brBadge = canApprove && window._artBereicheIds && !window._artBereicheIds.has(a.id) ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">⚠ ${LANG==="vi"?"Chưa có KV":"Kein Bereich"}</span>` : "";
@@ -180,7 +180,7 @@ function renderArtikelByKat(fil, stC, aS) {
 
     sortArtikel(g.items, stC).forEach(a => {
       const bp = a.lieferanten.length ? Math.min(...a.lieferanten.map(l=>l.preis)) : null;
-      const locStr = aS ? (a.lagerort?.[aS]||"—") : stC.map(s=>a.lagerort?.[s.id]).filter(Boolean).join(" | ") || "—";
+      const locStr = (aS ? locLabel(a, aS) : locLabelAll(a, stC.map(s=>s.id))) || "—";
       h += `<tr class="art-row" style="border-bottom:1px solid var(--bd)" onclick="showArtikelDetail('${a.id}')">`;
       const _katBrBadge = (U.role==="admin"||U.role==="manager") && window._artBereicheIds && !window._artBereicheIds.has(a.id) ? `<span style="font-size:9px;padding:1px 5px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700;margin-left:4px">⚠ ${LANG==="vi"?"Chưa có KV":"Kein Bereich"}</span>` : "";
       h += `<td style="padding:5px 8px"><div class="th">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div></td>`;
@@ -220,13 +220,16 @@ function renderArtikelByLagerort(fil, stC, aS) {
     const locs = aS ? [aS] : stC.map(s=>s.id);
     let hasLager = false;
     locs.forEach(sid => {
-      const loc = a.lagerort?.[sid] || "";
-      if (loc) {
+      // Mehrere Lagerorte: Artikel erscheint unter jedem Lagerort mit dessen Menge
+      const rows = locRows(a, sid);
+      rows.forEach(r => {
+        const loc = r.ort;
+        if (!loc) return;
         const key = `${sid}::${loc}`;
         if (!groups[key]) groups[key] = { loc, standort: D.standorte.find(s=>s.id===sid), items: [] };
-        groups[key].items.push({art: a, sid});
+        groups[key].items.push({art: a, sid, row: rows.length > 1 ? r : null});
         hasLager = true;
-      }
+      });
     });
     if (!hasLager) noLager.push(a);
   });
@@ -258,11 +261,13 @@ function renderArtikelByLagerort(fil, stC, aS) {
       const a = it.art;
       const ist = a.istBestand[it.sid]||0, soll = a.sollBestand[it.sid]||0, min = a.mindestmenge[it.sid]||0;
       const st = stkSt(ist, soll, min);
+      const shownIst = it.row ? it.row.ist : ist, shownSoll = it.row ? it.row.soll : soll;
       h += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--bd);cursor:pointer" onclick="showArtikelDetail('${a.id}')">`;
       h += `<div class="th" style="width:28px;height:28px;flex-shrink:0">${a.bilder?.length?`<img src="${esc(a.bilder[0])}">`:""}</div>`;
       const _lagBrBadge = (U.role==="admin"||U.role==="manager") && window._artBereicheIds && !window._artBereicheIds.has(a.id) ? ` <span style="font-size:8px;padding:1px 4px;background:var(--yA);color:var(--yl);border-radius:3px;font-weight:700">⚠</span>` : "";
       h += `<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px">${esc(artN(a))}${_lagBrBadge}</div><div style="font-size:9px;color:var(--t3)">${esc(a.sku)} · ${esc(a.einheit)}</div></div>`;
-      h += `<div style="text-align:right;flex-shrink:0"><div style="font-family:var(--m);font-weight:700;font-size:13px;color:${st.c}">${ist}/${soll} ${esc(a.einheit)}</div>`;
+      h += `<div style="text-align:right;flex-shrink:0"><div style="font-family:var(--m);font-weight:700;font-size:13px;color:${st.c}">${shownIst}/${shownSoll} ${esc(a.einheit)}</div>`;
+      if (it.row) h += `<div style="font-size:9px;color:var(--t3)">Σ ${ist}/${soll}</div>`;
       if (min > 0 && ist <= min) h += `<div style="font-size:9px;color:var(--rd)">⚠ min ${min}</div>`;
       h += `</div></div>`;
     });
