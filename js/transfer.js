@@ -368,7 +368,7 @@ function confirmTransfer(tfId, itemCount) {
       if (e.empfangen > 0) {
         const alt = a.istBestand[tf.nachId]||0;
         const _ortAlt = a.lagerort?.[tf.nachId]||"";
-        const _lo = locSetIst(a, tf.nachId, (a.istBestand[tf.nachId]||0) + e.empfangen, e.ort);
+        const _lo = locSetIst(a, tf.nachId, (a.istBestand[tf.nachId]||0) + e.empfangen, e.ort, true);
         if ((a.lagerort?.[tf.nachId]||"") !== _ortAlt) e._ortNeu = true;
         _sumLines.push({a, menge:e.empfangen});
         _sumChanges.push({a, alt, neu:a.istBestand[tf.nachId]});

@@ -130,6 +130,19 @@ function saveLagerplatz(id, isEdit) {
       D.artikel.forEach(a => {
         if (locHas(a, old.standortId, old.name)) (_renamed[a.id] = locRename(a, old.standortId, old.name, name));
       });
+      // Auffüll-Quelle in Bereichen und offenen Anforderungen mit umbenennen (sonst still → Standort gesamt)
+      if (old.standortId === standortId) {
+        const hit = it => it.quelleId === old.standortId && it.quelleOrt === old.name;
+        (D.bereiche || []).forEach(br => {
+          if (!(br.artikel || []).some(hit)) return;
+          br.artikel.forEach(it => { if (hit(it)) it.quelleOrt = name; });
+          if (typeof sbSaveBereich === "function") sbSaveBereich(br).catch(e => console.error("sbSaveBereich:", e));
+        });
+        (D.anforderungen || []).filter(anf => anf.status === "offen" && (anf.items || []).some(hit)).forEach(anf => {
+          anf.items.forEach(it => { if (hit(it)) it.quelleOrt = name; });
+          if (typeof sbSaveAnforderung === "function") sbSaveAnforderung(anf).catch(e => console.error("sbAnf:", e));
+        });
+      }
     }
     const idx = D.lagerplaetze.findIndex(x=>x.id===id);
     if (idx >= 0) D.lagerplaetze[idx] = f;

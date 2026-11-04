@@ -268,7 +268,7 @@ function buchenAlle(typ) {
     if (a) {
       const alt = a.istBestand[stId]||0, _ortAlt = a.lagerort?.[stId]||"";
       // Bei mehreren Lagerorten: am gewählten Lagerort; Ausgang, der dort nicht reicht, vom nächsten Lagerort
-      _bew.lagerort = locSetIst(a, stId, isE ? alt + b.menge : Math.max(0, alt - b.menge), b.ort);
+      _bew.lagerort = locSetIst(a, stId, isE ? alt + b.menge : Math.max(0, alt - b.menge), b.ort, isE);
       if ((a.lagerort?.[stId]||"") !== _ortAlt) b._ortNeu = true;
       _sumLines.push({a, menge:b.menge});
       _sumChanges.push({a, alt, neu:a.istBestand[stId]});

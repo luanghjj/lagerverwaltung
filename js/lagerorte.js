@@ -80,11 +80,12 @@ function locStore(a, sid, rows) {
 // IST am Standort auf `neu` setzen. Bei mehreren Lagerorten geht die Differenz an Lagerort `ort`
 // (Standard: erster); ein Abgang, der dort nicht reicht, wird von den nächsten Lagerorten abgezogen.
 // Rückgabe: betroffene Lagerorte für die Bewegung, z.B. "Restaurant" oder "Restaurant 3 · Lager 01 2".
-// Zugang an einen Lagerort, den der Artikel noch nicht hat → wird angelegt (ohne Lagerort: wird zugewiesen).
-function locSetIst(a, sid, neu, ort) {
+// create=true (nur Wareneingang / Transfer-Empfang, Lagerort wird dort mitgespeichert): Zugang an einen Lagerort,
+// den der Artikel noch nicht hat → wird angelegt (ohne Lagerort: wird zugewiesen). Sonst unbekannter Ort → erster.
+function locSetIst(a, sid, neu, ort, create) {
   a.istBestand = a.istBestand || {};
   let rows = locRows(a, sid);
-  if (ort && _locNum(neu) > _locSum(rows, "ist") && !rows.some(r => r.ort === ort)) {
+  if (create && ort && _locNum(neu) > _locSum(rows, "ist") && !rows.some(r => r.ort === ort)) {
     if (rows.length === 1 && !rows[0].ort) rows[0].ort = ort;
     else rows.push({ ort, ist: 0, soll: 0 });
     locStore(a, sid, rows);
