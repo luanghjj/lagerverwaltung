@@ -11,10 +11,11 @@ function render() {
   const canApprove = U && (U.role === "admin" || U.role === "manager");
   const pendingCount = canApprove ? D.artikel.filter(a => (a.status || "active") === "pending").length : 0;
 
+  const staffSimple = U.role === "staff"; // Nhân viên: không có thanh tab dọc, chỉ nút 3 gạch
   const NAV = [
     {id:"dashboard",l:t("nav.dashboard"),s:"main",pm:"dashboard",svg:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'},
     {id:"auswertung",l:LANG==="vi"?"Phân tích":"Auswertung",s:"main",pm:"auswertung",svg:'<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/>'},
-    {id:"artikel",l:t("nav.articles"),s:"lager",bdg:critCount||null,bdgColor:"var(--rd)",bdg2:pendingCount||null,bdg2Color:"var(--yl)",svg:'<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/>'},
+    {id:"artikel",l:t("nav.articles"),s:"lager",pm:"artikel.read",bdg:critCount||null,bdgColor:"var(--rd)",bdg2:pendingCount||null,bdg2Color:"var(--yl)",svg:'<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/>'},
     {id:"eingang",l:t("nav.goodsin"),s:"lager",pm:"eingang",svg:'<path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>'},
     {id:"ausgang",l:t("nav.goodsout"),s:"lager",pm:"ausgang",svg:'<path d="M12 21V9m0 0l4 4m-4-4l-4 4M5 3h14"/>'},
     {id:"transfer",l:LANG==="vi"?"Chuyển kho":"Umbuchen",s:"lager",pm:"transfer",svg:'<path d="M4 12h16m0 0l-4-4m4 4l-4 4M20 12H4m0 0l4 4m-4-4l4-4"/>'},
@@ -59,7 +60,7 @@ function render() {
   const noAccess = `<div class="mn-h"><div class="mn-t">🚫</div></div><div class="mn-c"><div style="text-align:center;padding:40px;color:var(--t3)">${LANG==="vi"?"Bạn không có quyền truy cập trang này":"Kein Zugriff auf diese Seite"}</div></div>`;
   if (PAGE === "dashboard") content = can(U.role,"dashboard") ? renderDashboard(vS, aS) : noAccess;
   else if (PAGE === "auswertung") content = can(U.role,"auswertung") ? renderAuswertung(vS, aS) : noAccess;
-  else if (PAGE === "artikel") content = renderArtikel(vS, aS);
+  else if (PAGE === "artikel") content = can(U.role,"artikel.read") ? renderArtikel(vS, aS) : noAccess;
   else if (PAGE === "eingang") content = can(U.role,"eingang") ? renderBewBuch("eingang", vS, aS) : noAccess;
   else if (PAGE === "ausgang") content = can(U.role,"ausgang") ? renderBewBuch("ausgang", vS, aS) : noAccess;
   else if (PAGE === "bewegungen") content = can(U.role,"bewegungen") ? renderBewegungen(vS, aS) : noAccess;
@@ -81,7 +82,7 @@ function render() {
 
   // Critical articles banner
   let critBanner = "";
-  if (critCount > 0) {
+  if (critCount > 0 && can(U.role, "artikel.read")) {
     critBanner = `<div class="crit-bar" style="padding:4px 16px;background:var(--rA);border-bottom:1px solid rgba(239,68,68,.15);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;cursor:pointer" onclick="goPage('artikel')"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px">🔴</span><span style="font-size:11px;font-weight:600;color:var(--rd)">${critCount} ${LANG==="vi"?"SP dưới mức tối thiểu":"Artikel unter Mindestbestand"}</span></div><button class="btn btn-d btn-sm" onclick="event.stopPropagation();goPage('bestellliste')" style="font-size:10px;padding:2px 8px">${LANG==="vi"?"Đặt hàng":"Bestellen"}</button></div>`;
   }
 
@@ -89,7 +90,7 @@ function render() {
   const mnc = document.querySelector(".mn-c");
   const scrollTop = mnc ? mnc.scrollTop : 0;
 
-  app.innerHTML = `<div class="app">${sidebar}<div class="mn">${stBar}${critBanner}${content}</div></div>`;
+  app.innerHTML = `<div class="app${staffSimple ? " sb-off" : ""}">${sidebar}<div class="mn">${stBar}${critBanner}${content}</div></div>`;
 
   // Restore scroll position after re-render (skip on page change)
   const mnc2 = document.querySelector(".mn-c");

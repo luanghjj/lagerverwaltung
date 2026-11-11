@@ -303,6 +303,15 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
   .sb{padding-top:env(safe-area-inset-top, 0px)}
 }
 
+/* Nhân viên cơ bản: sidebar ẩn mọi độ rộng, chỉ còn nút 3 gạch */
+.app.sb-off .sb{position:fixed;left:-260px;width:240px;min-width:0;height:100vh;height:100dvh;top:0;z-index:100;transition:left .3s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 20px rgba(0,0,0,.3)}
+.app.sb-off .sb.open{left:0}
+.app.sb-off .sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
+.app.sb-off .sb-ov.show{display:block}
+.app.sb-off .hb{display:flex!important}
+.app.sb-off .mn-h,.app.sb-off .ma-rh{padding-right:52px}
+.app.sb-off .st-bar{padding-right:52px}
+
 /* ═══ Mitarbeiter-Auffüllung ═══ */
 .ma-phone{display:flex;flex-direction:column;flex:1;min-height:0}
 .ma-search{padding:10px 12px}
@@ -323,7 +332,8 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
 .ma-bd{flex:1;min-width:0}
 .ma-nm{font-size:14px;font-weight:700}
 .ma-meta{font-size:11px;color:var(--t3);margin-top:1px}
-.ma-row{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;margin-top:6px}
+.ma-row{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:6px;margin-top:6px}
+.ma-row .ma-st{margin-left:auto}
 .ma-stock .l{font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.6px}
 .ma-stock .v{font-family:var(--m);font-weight:700;font-size:22px;line-height:1}
 .ma-stock .v small{font-family:inherit;font-size:12px;color:var(--t2);margin-left:3px}
@@ -372,7 +382,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
   .ma-right{flex:1;display:flex;flex-direction:column;min-width:0}
   .ma-rh{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 16px;border-bottom:1px solid var(--bd)}
   .ma-rh .ma-search{flex:0 1 320px;padding:0}
-  .ma-right .ma-grid{display:grid;grid-template-columns:repeat(2,1fr)}
+  .ma-right .ma-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(min-width:768px) and (orientation:portrait){
   .ma-left{width:210px}.ma-mid{width:190px}

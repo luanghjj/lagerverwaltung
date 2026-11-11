@@ -3,7 +3,7 @@ function renderBenutzer() {
   const roleInfo = {
     admin: { de: "Vollzugriff auf alle Funktionen", vi: "Toàn quyền truy cập", perms: LANG==="vi" ? ["Tất cả chức năng"] : ["Alle Funktionen"] },
     manager: { de: "Artikel, Bestellungen, Lieferanten-Details, Preise sichtbar", vi: "SP, Đơn hàng, Chi tiết NCC, Xem giá", perms: LANG==="vi" ? ["Sản phẩm","Đơn hàng","Biến động","Chi tiết NCC","Xem giá","Khu vực","Xuất file","Danh mục"] : ["Artikel","Bestellungen","Bewegungen","Lief.-Details","Preise","Bereiche","Export","Kategorien"] },
-    staff: { de: "Buchen, Bestellen, Bereiche — keine Preise, keine Lief.-Details", vi: "Nhập/Xuất, Đặt hàng, Khu vực — không xem giá, không xem chi tiết NCC", perms: LANG==="vi" ? ["Xem SP","Nhập/Xuất kho","Tạo đơn hàng","Khu vực","Không giá","Không chi tiết NCC"] : ["Artikel ansehen","Ein-/Ausbuchen","Bestellen","Bereiche","Keine Preise","Keine Lief.-Details"] },
+    staff: { de: "Nur Auffüllung — mehr über „Individuell anpassen“", vi: "Chỉ Auffüllung — thêm quyền qua „Individuell anpassen“", perms: LANG==="vi" ? ["Auffüllung","Không giá","Thêm quyền tuỳ chỉnh"] : ["Auffüllung","Keine Preise","Weitere Rechte individuell"] },
   };
 
   let h = `<div class="mn-h"><div class="mn-t">${t("nav.users")} & ${LANG==="vi"?"Quyền truy cập":"Zugänge"}</div><div class="mn-a"><button class="btn btn-p" onclick="editUser()">+ ${t("c.new")}</button></div></div><div class="mn-c">`;
@@ -90,7 +90,7 @@ function editUser(id) {
   const roleDescs = {
     admin: {de:"Vollzugriff: Alle Funktionen, Benutzer verwalten, Einstellungen ändern", vi:"Toàn quyền: Tất cả chức năng, quản lý người dùng, cài đặt"},
     manager: {de:"Artikel & Bestände verwalten, Bestellungen, Bewegungen, Exporte. Kein Zugriff auf Benutzer & Einstellungen.", vi:"Quản lý SP & tồn kho, đơn hàng, biến động, xuất file. Không có quyền quản lý người dùng & cài đặt."},
-    staff: {de:"Bestände ein-/ausbuchen, Bestellungen anlegen, Artikel & Lieferanten ansehen. Kein Bearbeiten oder Löschen.", vi:"Nhập/xuất kho, tạo đơn hàng, xem SP & NCC. Không được chỉnh sửa hoặc xóa."},
+    staff: {de:"Sieht nur die Auffüllung seiner Bereiche. Weitere Seiten (z. B. Inventur, Umbuchen) über „Individuell anpassen“.", vi:"Chỉ thấy trang Auffüllung của khu vực mình. Trang khác (vd. Inventur, Umbuchen) thêm qua „Individuell anpassen“."},
   };
   h += `${roleDescs[f.role]?.[LANG] || roleDescs[f.role]?.de || ""}`;
   h += `</div>`;

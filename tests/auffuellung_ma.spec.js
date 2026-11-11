@@ -81,6 +81,14 @@ async function runStaff(browser, base, name, vp) {
   page.on("pageerror", e => errors.push(String(e)));
   const blocked = await openAs(page, base, STAFF);
 
+  // Nhân viên cơ bản: không có thanh tab dọc, chỉ nút 3 gạch; menu chỉ có Auffüllung
+  assert(await page.locator(".app.sb-off").count() === 1, "sb-off gesetzt");
+  assert(await page.locator(".hb").isVisible(), "Hamburger sichtbar");
+  const sbBox = await page.locator("#sbEl").boundingBox();
+  assert(sbBox.x + sbBox.width <= 0, "Sidebar außerhalb des Bildschirms, x=" + sbBox.x);
+  assert(await page.locator(".sb-i").count() === 1, "Menü nur Auffüllung, war: " + await page.locator(".sb-i").count());
+  assert((await page.locator(".sb-i").textContent()).includes("Auffüllung"), "Menüpunkt Auffüllung");
+
   if (vp.width < 768) {
     assert(await page.locator(".ma-br").count() === 2, "phone: 2 Bereiche");
     await page.locator(".ma-br", { hasText: "Küche" }).click();
@@ -117,6 +125,19 @@ async function runStaff(browser, base, name, vp) {
   await page.waitForTimeout(100);
   assert(await page.locator(".ma-q").inputValue() === "45", "Menge auf Bestand geklemmt");
 
+  // Nichts wird rechts abgeschnitten (Karten + Stepper im Viewport)
+  for (const sel of [".ma-it", ".ma-st"]) {
+    const els = await page.locator(sel).all();
+    for (const el of els) {
+      const b = await el.boundingBox();
+      if (b) assert(b.x + b.width <= vp.width + 1, `${sel} abgeschnitten: rechts ${Math.round(b.x + b.width)} > ${vp.width}`);
+    }
+  }
+  // Suche wird vom Hamburger nicht verdeckt
+  const hb = await page.locator(".hb").boundingBox();
+  const sr = await page.locator("#maSearch").boundingBox();
+  assert(sr.x + sr.width <= hb.x || sr.y >= hb.y + hb.height, "Suche unter dem Hamburger");
+
   await page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
 
   // Auffüllen bucht lokal ab; die Schreibfunktionen laufen nur gegen den Stub
@@ -137,6 +158,22 @@ async function runStaff(browser, base, name, vp) {
   await page.close();
 }
 
+// Nhân viên có quyền tuỳ chỉnh: Auffüllung + Inventur → thấy đúng 2 mục, vẫn không có tab dọc
+async function runStaffCustom(browser, base) {
+  const page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
+  await openAs(page, base, { ...STAFF, perms: ["bereiche.view", "inventur"] });
+  assert(await page.locator(".app.sb-off").count() === 1, "custom: sb-off");
+  assert(await page.locator(".sb-i").count() === 2, "custom: 2 Menüpunkte, war: " + await page.locator(".sb-i").count());
+  await page.locator(".hb").click();
+  await page.waitForTimeout(400);
+  await page.locator(".sb-i", { hasText: "Inventur" }).click();
+  await page.waitForTimeout(200);
+  assert(await appVal(page, "PAGE") === "inventur", "custom: Inventur geöffnet");
+  await appRun(page, 'PAGE = "artikel"; render();');
+  assert((await page.locator(".mn-t").first().textContent()).includes("🚫"), "custom: Artikel gesperrt");
+  await page.close();
+}
+
 async function runAdmin(browser, base) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   await openAs(page, base, ADMIN);
@@ -149,6 +186,7 @@ async function runAdmin(browser, base) {
   await page.waitForTimeout(200);
   assert(await appVal(page, "PAGE") === "rst_auffuellung", "Admin landet auf alter Auffüllung, war: " + await appVal(page, "PAGE"));
   assert(await page.locator(".ma-phone, .ma-ipad").count() === 0, "Admin sieht das Mitarbeiter-Layout nicht");
+  assert(await page.locator(".app.sb-off").count() === 0, "Admin behält die Sidebar");
   await page.close();
 }
 
@@ -167,6 +205,8 @@ async function runAdmin(browser, base) {
     try { await runStaff(browser, base, name, vp); console.log("✓ " + name); }
     catch (e) { failed++; console.error("✗ " + name + ": " + e.message); }
   }
+  try { await runStaffCustom(browser, base); console.log("✓ staff+inventur"); }
+  catch (e) { failed++; console.error("✗ staff+inventur: " + e.message); }
   try { await runAdmin(browser, base); console.log("✓ admin"); }
   catch (e) { failed++; console.error("✗ admin: " + e.message); }
   await browser.close();
