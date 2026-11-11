@@ -121,29 +121,39 @@ function maCard(br, it) {
   const key = `${it.artikelId}|${it.qId}|${it.qOrt}`;
   const sel = MA_STATE.sel[key];
   const conv = formatUnitConv(it.lagerIst, a);
-  const low = it.lagerIst <= 0;
+  // Wie die App: grün ab Soll, gelb darunter, rot bei 0 — zusätzlich rot ab Mindestmenge
+  const min = (a.mindestmenge && a.mindestmenge[it.qId]) || 0;
+  const low = it.lagerIst <= 0 || (min > 0 && it.lagerIst <= min);
+  const col = low ? "var(--rd)" : it.lagerIst < it.soll ? "var(--yl)" : "var(--gn)";
+  const leer = it.lagerIst <= 0; // nur bei leerem Lager nicht wählbar
   return `<div class="ma-it${low ? " low" : ""}${sel ? " sel" : ""}">
     <div class="ma-pic">${a.bilder?.length ? `<img src="${esc(a.bilder[0])}" loading="lazy" alt="">` : ""}</div>
     <div class="ma-bd">
       <div class="ma-nm">${esc(artN(a))}</div>
       <div class="ma-meta">${esc(maQuelleLabel(br, it))}</div>
       <div class="ma-row">
-        <div class="ma-stock"><div class="l">ISTBESTAND</div><div class="v" style="${low ? "color:var(--rd)" : ""}">${it.lagerIst}<small>${esc(a.einheit || "")}</small></div>${conv ? `<div class="ma-conv">= ${esc(conv)}</div>` : ""}</div>
+        <div class="ma-stock"><div class="l">ISTBESTAND</div><div class="v" style="color:${col}">${it.lagerIst}<small>${esc(a.einheit || "")}</small></div>${conv ? `<div class="ma-conv">= ${esc(conv)}</div>` : ""}</div>
         ${sel
           ? `<div class="ma-st"><button onclick="maStep('${key}',-1)">−</button><input class="ma-q" type="number" inputmode="numeric" value="${sel.menge}" onchange="maType('${key}',this.value)"><button class="p" onclick="maStep('${key}',1)">+</button></div>`
-          : `<button class="ma-add" ${low ? "disabled" : ""} onclick="maAdd('${key}')">+ ${LANG === "vi" ? "Chọn" : "Wählen"}</button>`}
+          : `<button class="ma-add" ${leer ? "disabled" : ""} onclick="maAdd('${key}')">+ ${LANG === "vi" ? "Chọn" : "Wählen"}</button>`}
       </div>
     </div>
   </div>`;
 }
 
+// Farbe der Kategorie (aus Kategorien-Verwaltung) als Tab-Streifen + getönter Hintergrund
+function maKatStyle(k) {
+  const c = k && /^#[0-9a-f]{6}$/i.test(k.farbe || "") ? k.farbe : null;
+  return c ? ` style="--kc:${c};--kb:${c}1F;--ka:${c}59"` : "";
+}
+
 function maKatTabs(items, vertical) {
   const kats = maKatList(items);
-  const row = (id, name) => {
+  const row = (id, name, k) => {
     const z = maZeroCount(items, id);
-    return `<div class="ma-tab${MA_STATE.kat === id ? " on" : ""}" onclick="maSet('kat','${id}')"><span>${esc(name)}</span>${z ? `<span class="ma-cnt">${z}</span>` : ""}</div>`;
+    return `<div class="ma-tab${k ? " kf" : ""}${MA_STATE.kat === id ? " on" : ""}"${maKatStyle(k)} onclick="maSet('kat','${id}')"><span>${esc(name)}</span>${z ? `<span class="ma-cnt">${z}</span>` : ""}</div>`;
   };
-  const tabs = row("all", LANG === "vi" ? "Tất cả" : "Alle") + kats.map(k => row(k.id, katN(k))).join("");
+  const tabs = row("all", LANG === "vi" ? "Tất cả" : "Alle") + kats.map(k => row(k.id, katN(k), k)).join("");
   return `<div class="ma-tabs${vertical ? " v" : ""}">${tabs}</div>`;
 }
 
@@ -200,7 +210,7 @@ function renderMaIpad(br, bereiche, items) {
     .concat(kats.map(k => {
       const n = items.filter(it => (it.art.kategorien || []).includes(k.id)).length;
       const z = maZeroCount(items, k.id);
-      return `<div class="ma-kt${MA_STATE.kat === k.id ? " on" : ""}" onclick="maSet('kat','${k.id}')"><span class="ma-kn">${esc(katN(k))}</span><span class="ma-kc">${n}</span>${z ? `<span class="ma-cnt">${z}</span>` : ""}</div>`;
+      return `<div class="ma-kt kf${MA_STATE.kat === k.id ? " on" : ""}"${maKatStyle(k)} onclick="maSet('kat','${k.id}')"><span class="ma-kn">${esc(katN(k))}</span><span class="ma-kc">${n}</span>${z ? `<span class="ma-cnt">${z}</span>` : ""}</div>`;
     })).join("") : "";
 
   return `<div class="ma-ipad">
