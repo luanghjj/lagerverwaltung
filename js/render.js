@@ -23,8 +23,9 @@ function render() {
     {id:"bestellliste",l:t("nav.orderlist"),s:"einkauf",pm:"bestellliste",bdg:cartCount||null,svg:'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>'},
     {id:"bestellungen",l:t("nav.orders"),s:"einkauf",pm:"bestellungen",svg:'<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/>'},
     {id:"lieferanten",l:t("nav.suppliers"),s:"einkauf",pm:"lieferanten.read",svg:'<rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>'},
-    {id:"rst_bereiche",l:t("rst.bereiche"),s:"restaurant",pm:"bereiche.view",svg:'<path d="M3 3h18v18H3z M3 9h18 M9 3v18"/>' },
-    {id:"rst_auffuellung",l:t("rst.auffuellung"),s:"restaurant",pm:"bereiche.view",svg:'<path d="M12 3v12m0 0l-4-4m4 4l4-4"/><rect x="4" y="18" width="16" height="2" rx="1"/>'},
+    {id:"rst_ma",l:LANG==="vi"?"Bổ sung":"Auffüllung",s:"restaurant",pm:"bereiche.view",staffOnly:true,svg:'<path d="M12 3v12m0 0l-4-4m4 4l4-4"/><rect x="4" y="18" width="16" height="2" rx="1"/>'},
+    {id:"rst_bereiche",l:t("rst.bereiche"),s:"restaurant",pm:"bereiche.view",notStaff:true,svg:'<path d="M3 3h18v18H3z M3 9h18 M9 3v18"/>' },
+    {id:"rst_auffuellung",l:t("rst.auffuellung"),s:"restaurant",pm:"bereiche.view",notStaff:true,svg:'<path d="M12 3v12m0 0l-4-4m4 4l4-4"/><rect x="4" y="18" width="16" height="2" rx="1"/>'},
     {id:"standorte",l:t("nav.locations"),s:"admin",pm:"standorte",svg:'<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>'},
     {id:"benutzer",l:t("nav.users"),s:"admin",pm:"benutzer",svg:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>'},
     {id:"kategorien",l:t("nav.categories"),s:"admin",pm:"kategorien",svg:'<circle cx="9.5" cy="9.5" r="5.5"/><circle cx="15.5" cy="14.5" r="5.5"/>'},
@@ -38,7 +39,7 @@ function render() {
   let sidebar = `<div class="hb" onclick="toggleSidebar()"><span></span></div><div class="sb-ov" id="sbOv" onclick="toggleSidebar()"></div><div class="sb" id="sbEl"><div class="sb-h"><div style="display:flex;justify-content:space-between;align-items:center"><div class="sb-logo">${esc(D.einstellungen.firmenname)}</div><div style="display:flex;gap:3px;align-items:center"><div class="theme-sw"><button class="theme-btn ${THEME==="light"?"on":""}" onclick="setTheme('light')" title="Hell">☀</button><button class="theme-btn ${THEME==="dark"?"on":""}" onclick="setTheme('dark')" title="Dunkel">🌙</button></div><div class="lang-sw"><button class="lang-btn ${LANG==="de"?"on":""}" onclick="setLang('de')">DE</button><button class="lang-btn ${LANG==="vi"?"on":""}" onclick="setLang('vi')">VI</button></div></div></div><div class="sb-sub">${t("nav.warehouse")}</div></div><div class="sb-n">`;
   const secKeys = [...new Set(NAV.map(n=>n.s))];
   for (const sec of secKeys) {
-    const items = NAV.filter(n => n.s === sec && (!n.pm || can(U.role, n.pm)));
+    const items = NAV.filter(n => n.s === sec && (!n.pm || can(U.role, n.pm)) && (!n.staffOnly || U.role === "staff") && (!n.notStaff || U.role !== "staff"));
     if (!items.length) continue;
     sidebar += `<div class="sb-s">${secs[sec]}</div>`;
     for (const n of items) {
@@ -67,8 +68,9 @@ function render() {
   else if (PAGE === "bestellliste") content = can(U.role,"bestellliste") ? renderBestellliste(vS, aS) : noAccess;
   else if (PAGE === "bestellungen") content = can(U.role,"bestellungen") ? renderBestellungen(vS, aS) : noAccess;
   else if (PAGE === "lieferanten") content = can(U.role,"lieferanten.read") ? renderLieferanten() : noAccess;
-  else if (PAGE === "rst_bereiche") content = can(U.role,"bereiche.view") ? renderRstBereiche(vS, aS) : noAccess;
-  else if (PAGE === "rst_auffuellung") content = can(U.role,"bereiche.view") ? renderRstAuffuellung(vS, aS) : noAccess;
+  else if (PAGE === "rst_ma") content = (can(U.role,"bereiche.view") && U.role === "staff") ? renderAuffuellungMa(vS, aS) : noAccess;
+  else if (PAGE === "rst_bereiche") content = (can(U.role,"bereiche.view") && U.role !== "staff") ? renderRstBereiche(vS, aS) : noAccess;
+  else if (PAGE === "rst_auffuellung") content = (can(U.role,"bereiche.view") && U.role !== "staff") ? renderRstAuffuellung(vS, aS) : noAccess;
   else if (PAGE === "standorte") content = can(U.role,"standorte") ? renderStandorte() : noAccess;
   else if (PAGE === "benutzer") content = can(U.role,"benutzer") ? renderBenutzer() : noAccess;
   else if (PAGE === "kategorien") content = can(U.role,"kategorien") ? renderKategorien() : noAccess;
@@ -111,6 +113,10 @@ function render() {
   }
   if (PAGE === "inventur" && INV_SEARCH) {
     const si = document.getElementById("inv_search");
+    if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
+  }
+  if (PAGE === "rst_ma" && typeof MA_STATE !== "undefined" && MA_STATE.search) {
+    const si = document.getElementById("maSearch");
     if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
   }
 }

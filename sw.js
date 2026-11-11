@@ -1,9 +1,9 @@
 // ═══ サービスワーカー — 在庫管理 PWA ═══
-const CACHE_NAME = 'lager-v3.3.3';
+const CACHE_NAME = 'lager-v3.4.0';
 const ASSETS = [
   './',
   './index.html',
-  './style.css',
+  './style.css?v=3.4.0',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
@@ -28,6 +28,7 @@ const ASSETS = [
   './js/lieferanten.js',
   './js/benutzer.js',
   './js/restaurant.js',
+  './js/auffuellung_ma.js',
   './js/standorte.js',
   './js/lagerplaetze_inline.js',
   './js/qr.js',
