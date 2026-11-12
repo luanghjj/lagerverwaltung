@@ -80,40 +80,78 @@ function maToggle(key, it) {
 function maRemove(key) { delete MA_STATE.sel[key]; render(); }
 function maClear() { MA_STATE.sel = {}; render(); }
 
-function maConfirm() {
-  if (_actionLock) return;
-  const br = D.bereiche.find(x => x.id === MA_STATE.brId);
-  if (!br) return;
-  const entries = Object.entries(MA_STATE.sel).filter(([, s]) => s.menge > 0);
-  if (!entries.length) return;
-  _actionLock = true; setTimeout(() => _actionLock = false, 1500);
-
-  const fillData = entries.map(([key, s]) => {
+// Aktuelle Auswahl → Buchungszeilen (Menge auf aktuellen Lagerbestand begrenzt)
+function maFillData() {
+  return Object.entries(MA_STATE.sel).filter(([, s]) => s.menge > 0).map(([key, s]) => {
     const a = D.artikel.find(x => x.id === s.artikelId);
     const lagerIst = a ? locQuelleIst(a, s.qId, s.qOrt) : 0;
     return { key, artikelId: s.artikelId, art: a, fillQty: Math.min(s.menge, lagerIst), angefordert: s.menge, quelleId: s.qId, quelleOrt: s.qOrt, standIst: a?.istBestand[s.qId] || 0, lagerIst };
   });
-  const total = fillData.reduce((sum, d) => sum + d.fillQty, 0);
-  const dropped = fillData.filter(d => d.fillQty < d.angefordert);
-  if (total <= 0) { toast(LANG === "vi" ? "Không còn hàng để xuất" : "Kein Bestand mehr verfügbar", "e"); return; }
+}
 
-  let label = LANG === "vi"
-    ? `Xuất kho ${total} đơn vị cho ${maBrName(br)}?`
-    : `${total} Einheiten für ${maBrName(br)} aus dem Lager abbuchen?`;
-  if (dropped.length) label += `\n\n⚠ ${dropped.length} ${LANG === "vi" ? "món bị giảm vì kho không đủ" : "Artikel reduziert — Bestand reicht nicht"}`;
-  label += `\n\n${LANG === "vi" ? "Tồn kho sẽ bị trừ ngay." : "Bestand wird sofort reduziert."}`;
+// Bestätigung als Liste: jede Zeile mit Menge −/+ und ✕ — Änderungen gelten direkt für die Auswahl
+function maConfirm() {
+  if (_actionLock) return;
+  if (!D.bereiche.find(x => x.id === MA_STATE.brId) || !maSelCount()) return;
+  maCfRender();
+}
 
-  cConfirm(label, () => {
-    const anf = {
-      id: uid(), bereichId: br.id, standortId: br.standortId,
-      items: fillData.filter(d => d.fillQty > 0).map(d => ({ artikelId: d.artikelId, menge: d.fillQty, quelleId: d.quelleId, quelleOrt: d.quelleOrt })),
-      status: "offen", datum: nw(), erstelltVon: U.id
-    };
-    D.anforderungen.unshift(anf);
-    const done = fillData.filter(d => d.fillQty > 0);
-    done.forEach(d => { const s = MA_STATE.sel[d.key]; if (s) delete MA_STATE.sel[d.key]; });
-    rstAbbuchen(anf, done);
-  });
+function maCfClose() { document.getElementById("maCfOv")?.remove(); }
+
+function maCfRender() {
+  const br = D.bereiche.find(x => x.id === MA_STATE.brId);
+  const fd = br ? maFillData() : [];
+  if (!fd.length) { maCfClose(); return; }
+  const vi = LANG === "vi";
+  const total = fd.reduce((sum, d) => sum + d.fillQty, 0);
+  const dropped = fd.filter(d => d.fillQty < d.angefordert).length;
+  const rows = fd.map(d => {
+    const a = d.art;
+    const qName = D.standorte.find(x => x.id === d.quelleId)?.name || "";
+    const src = d.quelleId !== br.standortId ? `${qName}${d.quelleOrt ? " · " + d.quelleOrt : ""}` : (d.quelleOrt || qName);
+    const short = d.fillQty < d.angefordert;
+    return `<div class="ma-cf-it">
+      <div class="ma-cf-b"><div class="ma-cf-n">${esc(a ? artN(a) : "—")}</div>
+        <div class="ma-cf-m">${esc(src)} · ${vi ? "Kho" : "Lager"} <b style="color:${short ? "var(--rd)" : "var(--t2)"}">${d.lagerIst}</b> ${esc(a?.einheit || "")}</div></div>
+      <div class="ma-st"><button onclick="maCfStep('${d.key}',-1)">−</button><input class="ma-q" type="number" inputmode="numeric" value="${d.angefordert}" onchange="maCfType('${d.key}',this.value)"><button class="p" onclick="maCfStep('${d.key}',1)">+</button></div>
+      <button class="ma-cf-x" onclick="maCfRemove('${d.key}')" aria-label="${vi ? "Xoá" : "Entfernen"}">✕</button>
+    </div>`;
+  }).join("");
+  const inner = `<div class="mo ma-cf" onclick="event.stopPropagation()">
+    <div class="mo-h"><div class="mo-ti">${vi ? "Xác nhận bổ sung" : "Auffüllen bestätigen"} — ${esc(maBrName(br))}</div><button class="bi" onclick="maCfClose()">✕</button></div>
+    <div class="mo-b ma-cf-l">${rows}</div>
+    <div class="ma-cf-f">
+      <div class="ma-cf-sum">${fd.length} ${vi ? "món" : "Artikel"} · ${vi ? "Tổng" : "Gesamt"} <b>${total}</b> ${vi ? "đơn vị" : "Einheiten"}</div>
+      ${dropped ? `<div class="ma-cf-w">⚠ ${dropped} ${vi ? "món bị giảm vì kho không đủ" : "Artikel reduziert — Bestand reicht nicht"}</div>` : ""}
+      <div class="ma-cf-h">${vi ? "Tồn kho sẽ bị trừ ngay." : "Bestand wird sofort reduziert."}</div>
+      <div class="ma-cf-btn"><button class="btn btn-o" onclick="maCfClose()">${t("c.cancel")}</button><button class="btn btn-p" ${total > 0 ? "" : "disabled"} onclick="maCfBook()">${vi ? "Xác nhận" : "Bestätigen"}</button></div>
+    </div>
+  </div>`;
+  const ov = document.getElementById("maCfOv");
+  if (ov) { ov.innerHTML = inner; return; }
+  document.body.insertAdjacentHTML("beforeend", `<div class="mo-ov" id="maCfOv" style="z-index:300" onclick="maCfClose()">${inner}</div>`);
+}
+
+function maCfStep(key, dir) { maStep(key, dir); maCfRender(); }
+function maCfType(key, val) { maType(key, val); setTimeout(maCfRender, 0); }
+function maCfRemove(key) { maRemove(key); maCfRender(); }
+
+function maCfBook() {
+  if (_actionLock) return;
+  const br = D.bereiche.find(x => x.id === MA_STATE.brId);
+  if (!br) { maCfClose(); return; }
+  const done = maFillData().filter(d => d.fillQty > 0);
+  if (!done.length) { toast(LANG === "vi" ? "Không còn hàng để xuất" : "Kein Bestand mehr verfügbar", "e"); return; }
+  _actionLock = true; setTimeout(() => _actionLock = false, 1500);
+  maCfClose();
+  const anf = {
+    id: uid(), bereichId: br.id, standortId: br.standortId,
+    items: done.map(d => ({ artikelId: d.artikelId, menge: d.fillQty, quelleId: d.quelleId, quelleOrt: d.quelleOrt })),
+    status: "offen", datum: nw(), erstelltVon: U.id
+  };
+  D.anforderungen.unshift(anf);
+  done.forEach(d => { delete MA_STATE.sel[d.key]; });
+  rstAbbuchen(anf, done);
 }
 
 function maCard(br, it) {
