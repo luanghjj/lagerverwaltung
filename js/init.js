@@ -41,6 +41,8 @@ let APP_ONLINE = true;
   window.addEventListener("online", () => { APP_ONLINE = true; render(); });
   window.addEventListener("offline", () => { APP_ONLINE = false; render(); });
 
+  // Đăng nhập lần trước còn lưu trên máy → vào thẳng, không hỏi PIN lại
+  if (typeof restoreSession === "function") restoreSession();
   checkQRScan();
   render();
 

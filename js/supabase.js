@@ -455,13 +455,24 @@ async function sbSaveTransfer(t) {
 }
 
 // Save user to Supabase staff_pins
+// Gibt { ok:true } oder { error } zurück, damit die Maske Fehler anzeigen kann.
 async function sbSaveUser(u) {
+  // PIN ist UNIQUE — auch gelöschte Benutzer belegen ihren PIN noch.
+  const { data: clash, error: qErr } = await sb.from("users").select("id,deleted_at").eq("pin", u.pin).neq("id", u.id);
+  if (qErr) { console.error("[sbSaveUser]", qErr.message); return { error: qErr.message }; }
+  if ((clash || []).some(c => !c.deleted_at)) return { error: "PIN_TAKEN" };
+  // PIN eines gelöschten Benutzers freigeben
+  for (const c of clash || []) {
+    const { error: e } = await sb.from("users").update({ pin: `${u.pin}-${Math.random().toString(36).slice(2, 5)}` }).eq("id", c.id);
+    if (e) { console.error("[sbSaveUser] PIN freigeben:", e.message); return { error: e.message }; }
+  }
   const { error } = await sb.from("users").upsert({
     id: u.id, name: u.name, email: u.email || "", role: u.role, pin: u.pin,
     standorte: u.standorte || ["all"], bereiche: u.bereiche || ["all"],
     perms: u.perms || []
   }, { onConflict: "id" });
-  if (error) console.error("[sbSaveUser]", error.message);
+  if (error) { console.error("[sbSaveUser]", error.message); return { error: error.code === "23505" ? "PIN_TAKEN" : error.message }; }
+  return { ok: true };
 }
 
 // Soft-delete user from Supabase

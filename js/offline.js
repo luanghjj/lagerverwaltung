@@ -74,7 +74,7 @@ function wrapSbFunctions() {
         return;
       }
       try {
-        await orig.apply(this, args);
+        return await orig.apply(this, args);
       } catch (e) {
         console.warn(`⚠ ${fnName} failed, queuing:`, e.message);
         queueOfflineAction(fnName, args);

@@ -544,6 +544,7 @@ function confirmReset() {
   migrate();
   save();
   U = null;
+  clearSession();
   render();
   toast(`🗑 ${LANG==="vi"?"Đã xóa toàn bộ dữ liệu":"Alle Daten zurückgesetzt"}`,"i");
 }

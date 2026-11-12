@@ -67,7 +67,7 @@ function editUser(id) {
   const usedPins = D.users.map(x => x.pin);
   let rndPin = "";
   if (!u) { do { rndPin = String(Math.floor(100000 + Math.random() * 900000)); } while (usedPins.includes(rndPin)); }
-  const f = u ? JSON.parse(JSON.stringify(u)) : {id:uid(),name:"",email:"",role:"staff",standorte:[],bereiche:["all"],pin:rndPin};
+  const f = u ? JSON.parse(JSON.stringify(u)) : {id:uid(),name:"",email:"",role:"staff",standorte:["all"],bereiche:["all"],pin:rndPin};
   const title = u ? `${t("c.edit")} — ${esc(f.name)}` : `${t("c.new")} ${t("nav.users")}`;
 
   let h = `<div class="mo-ov" onclick="closeModal()"><div class="mo" onclick="event.stopPropagation()"><div class="mo-h"><div class="mo-ti">${title}</div><button class="bi" onclick="closeModal()">✕</button></div><div class="mo-b">`;
@@ -82,7 +82,7 @@ function editUser(id) {
     h += `<option value="${role}" ${f.role===role?"selected":""}>${t("r."+role)}</option>`;
   }
   h += `</select></div>`;
-  h += `<div class="fg"><label>PIN (6 ${LANG==="vi"?"số":"Ziffern"}) *</label><input class="inp" id="ue_pin" value="${esc(f.pin)}" maxlength="6" placeholder="123456" style="font-family:var(--m);letter-spacing:4px;text-align:center;font-size:16px"></div>`;
+  h += `<div class="fg"><label>PIN (4–6 ${LANG==="vi"?"số":"Ziffern"}) *</label><input class="inp" id="ue_pin" value="${esc(f.pin)}" maxlength="6" inputmode="numeric" placeholder="123456" style="font-family:var(--m);letter-spacing:4px;text-align:center;font-size:16px"></div>`;
   h += `</div>`;
 
   // Role description
@@ -266,32 +266,50 @@ function ueTogBereich(bId) {
   if (container) container.innerHTML = renderUeBereiche(f);
 }
 
-function saveUser(id, isEdit) {
+async function saveUser(id, isEdit) {
   const f = window._ueForm;
-  f.name = document.getElementById("ue_name")?.value || "";
-  f.email = document.getElementById("ue_email")?.value || "";
+  f.name = (document.getElementById("ue_name")?.value || "").trim();
+  f.email = (document.getElementById("ue_email")?.value || "").trim();
   f.role = document.getElementById("ue_role")?.value || "staff";
-  f.pin = document.getElementById("ue_pin")?.value || "";
+  f.pin = (document.getElementById("ue_pin")?.value || "").trim();
 
   if (!f.name) { toast(LANG==="vi"?"Vui lòng nhập tên":"Bitte Name eingeben","e"); return; }
-  if (!f.pin || f.pin.length < 6) { toast(LANG==="vi"?"PIN phải có 6 số":"PIN muss 6 Ziffern haben","e"); return; }
+  if (!/^\d{4,6}$/.test(f.pin)) { toast(LANG==="vi"?"PIN phải có 4–6 số":"PIN muss 4–6 Ziffern haben","e"); return; }
   if (!f.standorte.length) { toast(LANG==="vi"?"Vui lòng chọn chi nhánh":"Bitte Standort wählen","e"); return; }
   if (!f.bereiche || !f.bereiche.length) f.bereiche = ["all"];
+
+  // PIN darf nicht von einem anderen aktiven Benutzer belegt sein
+  if (D.users.some(u => u.id !== id && u.pin === f.pin)) {
+    toast(LANG==="vi"?"PIN này đã có người dùng":"PIN wird bereits verwendet","e"); return;
+  }
+  if (!isEdit && D.users.some(u => u.name.toLowerCase() === f.name.toLowerCase())) {
+    toast(LANG==="vi"?"Tên đã tồn tại":"Name existiert bereits","e"); return;
+  }
+
+  const btn = document.querySelector(".mo-f .btn-p");
+  if (btn) { btn.disabled = true; btn.textContent = "..."; }
+
+  const res = typeof sbSaveUser === "function" ? await sbSaveUser(f) : { ok: true };
+  if (res && res.error) {
+    if (btn) { btn.disabled = false; btn.textContent = t("c.save"); }
+    toast(res.error === "PIN_TAKEN"
+      ? (LANG==="vi"?"PIN này đã có người dùng":"PIN wird bereits verwendet")
+      : `${LANG==="vi"?"Không lưu được":"Speichern fehlgeschlagen"}: ${res.error}`, "e");
+    return;
+  }
 
   if (isEdit) {
     const idx = D.users.findIndex(x=>x.id===id);
     if (idx >= 0) D.users[idx] = f;
-    // Update current user if editing self
-    if (U.id === id) { U.name = f.name; U.email = f.email; U.standorte = f.standorte; }
-  } else {
-    // Check unique name
-    if (D.users.some(u => u.name.toLowerCase() === f.name.toLowerCase())) {
-      toast(LANG==="vi"?"Tên đã tồn tại":"Name existiert bereits","e"); return;
+    if (U.id === id) {
+      U.name = f.name; U.email = f.email; U.standorte = f.standorte; U.bereiche = f.bereiche;
+      U.role = f.role; U.pin = f.pin; U.perms = Array.isArray(f.perms) && f.perms.length ? f.perms : null;
+      saveSession();
     }
+  } else {
     D.users.push(f);
   }
   save(); closeModal(); render();
-  if (typeof sbSaveUser === "function") sbSaveUser(f).catch(e => console.error("sbSaveUser:", e));
   toast("✓","s");
 }
 
