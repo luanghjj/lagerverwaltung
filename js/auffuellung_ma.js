@@ -1,7 +1,7 @@
 /* Mitarbeiter-Auffüllung: Bereich → Kategorie → Artikel, direktes Abbuchen ohne Manager-Bestätigung.
    Phone: Bereich-Liste, dann Split-View (Kategorie-Tabs links, Karten rechts, sticky Button).
    iPad ab 768px: 3 Spalten (Auswahl | Bereich+Kategorie | Artikel). */
-const MA_STATE = { brId: "", kat: "all", search: "", sel: {} };
+const MA_STATE = { brId: "", kat: "all", search: "", sel: {}, panel: false };
 let MA_ITEMS = [];
 
 function maBereiche(vS, aS) {
@@ -38,8 +38,16 @@ function maQuelleLabel(br, it) {
   return it.qId !== br.standortId ? `${name}${ort}` : (it.qOrt || name);
 }
 
-function maSet(key, val) { MA_STATE[key] = val; render(); }
-function maOpen(brId) { MA_STATE.brId = brId; MA_STATE.kat = "all"; MA_STATE.search = ""; render(); }
+// Neu zeichnen. Das Auswahl-Panel hängt außerhalb von #app und wird separat aktualisiert.
+function maUi() { render(); maPanelRender(); }
+// Tastatur schließen, bevor neu gezeichnet wird (sonst springt sie bei jedem +/− wieder auf)
+function maKbOff() {
+  const el = document.activeElement;
+  if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) el.blur();
+}
+
+function maSet(key, val) { MA_STATE[key] = val; if (key !== "search") maKbOff(); maUi(); }
+function maOpen(brId) { MA_STATE.brId = brId; MA_STATE.kat = "all"; MA_STATE.search = ""; MA_STATE.panel = false; maKbOff(); maUi(); }
 
 function maSelCount() { return Object.values(MA_STATE.sel).filter(x => x.menge > 0).length; }
 
@@ -49,7 +57,8 @@ function maStep(key, dir) {
   const max = s.lagerIst;
   s.menge = Math.max(0, Math.min(max, s.menge + dir));
   if (s.menge <= 0) delete MA_STATE.sel[key];
-  render();
+  maKbOff();
+  maUi();
 }
 
 function maType(key, val) {
@@ -61,7 +70,7 @@ function maType(key, val) {
   s.menge = menge;
   if (s.menge <= 0) delete MA_STATE.sel[key];
   // render() ersetzt das fokussierte Feld → Blur feuert erneut "change". Nicht mitten im render() neu rendern.
-  setTimeout(render, 0);
+  setTimeout(maUi, 0);
 }
 
 function maAdd(key) {
@@ -71,14 +80,15 @@ function maAdd(key) {
 }
 
 function maToggle(key, it) {
-  if (MA_STATE.sel[key]) { delete MA_STATE.sel[key]; render(); return; }
+  if (MA_STATE.sel[key]) { delete MA_STATE.sel[key]; maUi(); return; }
   if (it.lagerIst <= 0) { toast(LANG === "vi" ? "Hết hàng — không bổ sung được" : "Kein Bestand — Auffüllen nicht möglich", "e"); return; }
   MA_STATE.sel[key] = { artikelId: it.artikelId, qId: it.qId, qOrt: it.qOrt, menge: 1, lagerIst: it.lagerIst };
-  render();
+  maKbOff();
+  maUi();
 }
 
-function maRemove(key) { delete MA_STATE.sel[key]; render(); }
-function maClear() { MA_STATE.sel = {}; render(); }
+function maRemove(key) { delete MA_STATE.sel[key]; maUi(); }
+function maClear() { MA_STATE.sel = {}; maUi(); }
 
 // Aktuelle Auswahl → Buchungszeilen (Menge auf aktuellen Lagerbestand begrenzt)
 function maFillData() {
@@ -89,10 +99,11 @@ function maFillData() {
   });
 }
 
-// Bestätigung als Liste: jede Zeile mit Menge −/+ und ✕ — Änderungen gelten direkt für die Auswahl
+// Bestätigung: nur Kurzfrage mit Summe — bearbeitet wird die Auswahl im Panel, nicht hier
 function maConfirm() {
   if (_actionLock) return;
   if (!D.bereiche.find(x => x.id === MA_STATE.brId) || !maSelCount()) return;
+  maKbOff();
   maCfRender();
 }
 
@@ -105,23 +116,11 @@ function maCfRender() {
   const vi = LANG === "vi";
   const total = fd.reduce((sum, d) => sum + d.fillQty, 0);
   const dropped = fd.filter(d => d.fillQty < d.angefordert).length;
-  const rows = fd.map(d => {
-    const a = d.art;
-    const qName = D.standorte.find(x => x.id === d.quelleId)?.name || "";
-    const src = d.quelleId !== br.standortId ? `${qName}${d.quelleOrt ? " · " + d.quelleOrt : ""}` : (d.quelleOrt || qName);
-    const short = d.fillQty < d.angefordert;
-    return `<div class="ma-cf-it">
-      <div class="ma-cf-b"><div class="ma-cf-n">${esc(a ? artN(a) : "—")}</div>
-        <div class="ma-cf-m">${esc(src)} · ${vi ? "Kho" : "Lager"} <b style="color:${short ? "var(--rd)" : "var(--t2)"}">${d.lagerIst}</b> ${esc(a?.einheit || "")}</div></div>
-      <div class="ma-st"><button onclick="maCfStep('${d.key}',-1)">−</button><input class="ma-q" type="number" inputmode="numeric" value="${d.angefordert}" onchange="maCfType('${d.key}',this.value)"><button class="p" onclick="maCfStep('${d.key}',1)">+</button></div>
-      <button class="ma-cf-x" onclick="maCfRemove('${d.key}')" aria-label="${vi ? "Xoá" : "Entfernen"}">✕</button>
-    </div>`;
-  }).join("");
   const inner = `<div class="mo ma-cf" onclick="event.stopPropagation()">
     <div class="mo-h"><div class="mo-ti">${vi ? "Xác nhận bổ sung" : "Auffüllen bestätigen"} — ${esc(maBrName(br))}</div><button class="bi" onclick="maCfClose()">✕</button></div>
-    <div class="mo-b ma-cf-l">${rows}</div>
     <div class="ma-cf-f">
-      <div class="ma-cf-sum">${fd.length} ${vi ? "món" : "Artikel"} · ${vi ? "Tổng" : "Gesamt"} <b>${total}</b> ${vi ? "đơn vị" : "Einheiten"}</div>
+      <div class="ma-cf-q">${fd.length} ${vi ? "món bổ sung" : (fd.length === 1 ? "Artikel auffüllen" : "Artikel auffüllen")}?</div>
+      <div class="ma-cf-sum">${vi ? "Tổng" : "Gesamt"} <b>${total}</b> ${vi ? "đơn vị" : "Einheiten"}</div>
       ${dropped ? `<div class="ma-cf-w">⚠ ${dropped} ${vi ? "món bị giảm vì kho không đủ" : "Artikel reduziert — Bestand reicht nicht"}</div>` : ""}
       <div class="ma-cf-h">${vi ? "Tồn kho sẽ bị trừ ngay." : "Bestand wird sofort reduziert."}</div>
       <div class="ma-cf-btn"><button class="btn btn-o" onclick="maCfClose()">${t("c.cancel")}</button><button class="btn btn-p" ${total > 0 ? "" : "disabled"} onclick="maCfBook()">${vi ? "Xác nhận" : "Bestätigen"}</button></div>
@@ -131,10 +130,6 @@ function maCfRender() {
   if (ov) { ov.innerHTML = inner; return; }
   document.body.insertAdjacentHTML("beforeend", `<div class="mo-ov" id="maCfOv" style="z-index:300" onclick="maCfClose()">${inner}</div>`);
 }
-
-function maCfStep(key, dir) { maStep(key, dir); maCfRender(); }
-function maCfType(key, val) { maType(key, val); setTimeout(maCfRender, 0); }
-function maCfRemove(key) { maRemove(key); maCfRender(); }
 
 function maCfBook() {
   if (_actionLock) return;
@@ -206,7 +201,61 @@ function maGrid(br, items) {
 
 function maGoBtn() {
   const n = maSelCount();
-  return `<button class="ma-go" ${n ? "" : "disabled"} onclick="maConfirm()">✓ ${n} ${LANG === "vi" ? "món bổ sung" : (n === 1 ? "Artikel auffüllen" : "Artikel auffüllen")}</button>`;
+  return `<button class="ma-go" ${n ? "" : "disabled"} onclick="maConfirm()">✓ ${n} ${LANG === "vi" ? "món bổ sung" : "Artikel auffüllen"}</button>`;
+}
+
+// Phone: Auswahl-Panel von rechts (Wischgeste oder 🧺-Button). Nur auf dem Phone, iPad hat die Spalte.
+function maPanelOpen() { MA_STATE.panel = true; maKbOff(); maPanelRender(); }
+function maPanelClose() { MA_STATE.panel = false; maPanelRender(); }
+
+function maPanelRender() {
+  const ov = document.getElementById("maPnOv");
+  if (window.innerWidth >= 768 || !MA_STATE.panel) { ov?.remove(); return; }
+  const vi = LANG === "vi";
+  const entries = Object.entries(MA_STATE.sel).filter(([, s]) => s.menge > 0);
+  const rows = entries.map(([key, s]) => {
+    const a = D.artikel.find(x => x.id === s.artikelId);
+    const qName = D.standorte.find(x => x.id === s.qId)?.name || "";
+    const short = s.menge > s.lagerIst;
+    return `<div class="ma-pn-it">
+      <div class="ma-pn-b"><div class="ma-pn-n">${esc(a ? artN(a) : "—")}</div><div class="ma-pn-m">${esc(qName)}${s.qOrt ? " · " + esc(s.qOrt) : ""} · ${vi ? "Kho" : "Lager"} <b style="color:${short ? "var(--rd)" : "var(--t2)"}">${s.lagerIst}</b></div></div>
+      <div class="ma-st"><button onclick="maStep('${key}',-1)">−</button><input class="ma-q" type="number" inputmode="numeric" value="${s.menge}" onchange="maType('${key}',this.value)"><button class="p" onclick="maStep('${key}',1)">+</button></div>
+      <button class="ma-cf-x" onclick="maRemove('${key}')" aria-label="${vi ? "Xoá" : "Entfernen"}">✕</button>
+    </div>`;
+  }).join("");
+  const inner = `<div class="ma-pn-bd" onclick="maPanelClose()"></div>
+    <div class="ma-pn">
+      <div class="ma-pn-h"><b>${vi ? "Đã chọn" : "Ausgewählt"}</b><span class="ma-lc">${entries.length}</span><button class="bi" onclick="maPanelClose()">✕</button></div>
+      <div class="ma-pn-l">${rows || `<div class="ma-empty">${vi ? "Chưa chọn món nào" : "Noch nichts gewählt"}</div>`}</div>
+      <div class="ma-pn-f">
+        ${entries.length ? `<div class="ma-clr" onclick="maClear()">${vi ? "Xoá tất cả" : "Alle löschen"}</div>` : ""}
+        ${maGoBtn()}
+      </div>
+    </div>`;
+  if (ov) { ov.innerHTML = inner; return; }
+  document.body.insertAdjacentHTML("beforeend", `<div id="maPnOv">${inner}</div>`);
+}
+
+// Nur eindeutige waagerechte Wischgesten zählen — diagonales Scrollen wird ignoriert.
+function maSwipe(el) {
+  if (el.dataset.sw) return;
+  el.dataset.sw = "1";
+  let x0 = 0, y0 = 0, dx = 0, dy = 0, moved = false;
+  el.addEventListener("touchstart", e => {
+    const t = e.changedTouches[0];
+    x0 = t.clientX; y0 = t.clientY; dx = 0; dy = 0; moved = false;
+  }, { passive: true });
+  el.addEventListener("touchmove", e => {
+    const t = e.changedTouches[0];
+    dx = t.clientX - x0; dy = t.clientY - y0;
+    if (!moved && Math.abs(dx) > 10 && Math.abs(dx) > 1.5 * Math.abs(dy)) moved = true;
+    if (moved) e.preventDefault();
+  }, { passive: false });
+  el.addEventListener("touchend", () => {
+    if (!moved || Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+    if (dx < 0 && !MA_STATE.panel) maPanelOpen();
+    else if (dx > 0 && MA_STATE.panel) maPanelClose();
+  }, { passive: true });
 }
 
 function renderMaPhone(br, bereiche, items) {
@@ -219,13 +268,13 @@ function renderMaPhone(br, bereiche, items) {
     return `<div class="mn-h"><div class="mn-t">${LANG === "vi" ? "Bổ sung" : "Auffüllung"}</div></div><div class="mn-c ma-phone">${list || `<div class="ma-empty">${LANG === "vi" ? "Chưa được gán Bereich nào" : "Keine Bereiche zugewiesen"}</div>`}</div>`;
   }
   return `<div class="mn-h"><div class="mn-t"><button class="ma-back" onclick="maOpen('')">‹</button> ${esc(maBrName(br))}</div></div>
-    <div class="ma-phone">
+    <div class="ma-phone" onpointerenter="maSwipe(this)">
       <div class="ma-search"><input id="maSearch" type="search" placeholder="${LANG === "vi" ? "Tìm món…" : "Artikel suchen…"}" value="${esc(MA_STATE.search)}" oninput="maSet('search',this.value)"></div>
       <div class="ma-split">
         ${maKatTabs(items, true)}
         <div class="ma-scroll">${maGrid(br, items)}</div>
       </div>
-      <div class="ma-bar">${maGoBtn()}</div>
+      <div class="ma-bar">${maGoBtn()}<button class="ma-cart" onclick="maPanelOpen()" aria-label="${LANG === "vi" ? "Đã chọn" : "Ausgewählt"}">🧺<span class="ma-cart-n">${maSelCount()}</span></button></div>
     </div>`;
 }
 
@@ -280,5 +329,8 @@ function renderAuffuellungMa(vS, aS) {
   const items = br ? (br.artikel || []).map(ba => maResolve(br, ba)).filter(Boolean) : [];
   MA_ITEMS = items;
   const ipad = window.innerWidth >= 768;
-  return ipad ? renderMaIpad(br, bereiche, items) : renderMaPhone(br, bereiche, items);
+  if (ipad) MA_STATE.panel = false;
+  const html = ipad ? renderMaIpad(br, bereiche, items) : renderMaPhone(br, bereiche, items);
+  setTimeout(maPanelRender, 0);
+  return html;
 }

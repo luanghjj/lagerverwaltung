@@ -138,12 +138,32 @@ async function runStaff(browser, base, name, vp) {
   const sr = await page.locator("#maSearch").boundingBox();
   assert(sr.x + sr.width <= hb.x || sr.y >= hb.y + hb.height, "Suche unter dem Hamburger");
 
+  // Phone: +/− darf die Tastatur nicht öffnen — nur das Suchfeld und die Mengeneingabe
+  if (vp.width < 768) {
+    await page.locator(".ma-st button.p").click();
+    assert(await page.evaluate(() => document.activeElement.tagName !== "INPUT"), "Stepper öffnet keine Tastatur");
+    await page.locator("#maSearch").click();
+    await page.keyboard.type("R");
+    await page.locator(".ma-st button.p").click();
+    assert(await page.evaluate(() => document.activeElement.id !== "maSearch"), "Suche bleibt nach + nicht fokussiert");
+    await page.locator("#maSearch").fill("");
+    await page.locator("#maSearch").dispatchEvent("input");
+    await page.waitForTimeout(100);
+    // Auswahl-Panel über den 🧺-Button, Menge dort änderbar
+    await page.locator(".ma-cart").click();
+    assert(await page.locator(".ma-pn").isVisible(), "Panel geöffnet");
+    await page.locator(".ma-pn .ma-st button.p").click();
+    assert(await page.locator(".ma-pn .ma-q").inputValue() === "45", "Menge im Panel auf Bestand geklemmt");
+    await page.locator(".ma-pn-bd").click({ position: { x: 8, y: 200 } });
+    assert(await page.locator(".ma-pn").count() === 0, "Panel über Hintergrund geschlossen");
+  }
+
   await page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
 
   // Auffüllen bucht lokal ab; die Schreibfunktionen laufen nur gegen den Stub
   const vorher = await appVal(page, 'D.artikel.find(a => a.id === "a1").istBestand["s1"]');
   await page.locator(".ma-go").click();
-  await page.locator("#cConfirmYes").click();
+  await page.locator("#maCfOv .ma-cf-btn .btn-p").click();
   await page.waitForTimeout(400);
   const nachher = await appVal(page, 'D.artikel.find(a => a.id === "a1").istBestand["s1"]');
   assert(nachher === vorher - 45, `Bestand ${vorher} → ${nachher}, erwartet ${vorher - 45}`);

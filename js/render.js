@@ -89,6 +89,8 @@ function render() {
   // Save scroll position before re-render
   const mnc = document.querySelector(".mn-c");
   const scrollTop = mnc ? mnc.scrollTop : 0;
+  // Auffüllung: Suchfeld nur wieder fokussieren, wenn gerade darin getippt wird (sonst öffnet jedes +/− die Tastatur)
+  const maSearchFocused = document.activeElement?.id === "maSearch";
 
   app.innerHTML = `<div class="app${staffSimple ? " sb-off" : ""}">${sidebar}<div class="mn">${stBar}${critBanner}${content}</div></div>`;
 
@@ -116,7 +118,7 @@ function render() {
     const si = document.getElementById("inv_search");
     if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
   }
-  if (PAGE === "rst_ma" && typeof MA_STATE !== "undefined" && MA_STATE.search) {
+  if (PAGE === "rst_ma" && maSearchFocused) {
     const si = document.getElementById("maSearch");
     if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
   }
