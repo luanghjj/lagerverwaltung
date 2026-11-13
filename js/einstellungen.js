@@ -4,7 +4,7 @@ function renderEinstellungen() {
 
   // Language + Theme
   h += `<div class="g2"><div class="fg"><label>${t("set.language")}</label><div class="lang-sw"><button class="lang-btn ${LANG==="de"?"on":""}" onclick="setLang('de')" style="padding:6px 16px;font-size:13px">🇩🇪 Deutsch</button><button class="lang-btn ${LANG==="vi"?"on":""}" onclick="setLang('vi')" style="padding:6px 16px;font-size:13px">🇻🇳 Tiếng Việt</button></div></div>`;
-  h += `<div class="fg"><label>Design</label><div class="theme-sw"><button class="theme-btn ${THEME==="light"?"on":""}" onclick="setTheme('light')" style="padding:6px 16px;font-size:13px">☀ ${LANG==="vi"?"Sáng":"Hell"}</button><button class="theme-btn ${THEME==="dark"?"on":""}" onclick="setTheme('dark')" style="padding:6px 16px;font-size:13px">🌙 ${LANG==="vi"?"Tối":"Dunkel"}</button></div></div></div>`;
+  h += `<div class="fg"><label>Design</label><div class="theme-sw"><button class="theme-btn ${THEME==="light"?"on":""}" onclick="setTheme('light')" style="padding:6px 16px;font-size:13px">☀ ${LANG==="vi"?"Sáng":"Hell"}</button><button class="theme-btn ${THEME==="dark"?"on":""}" onclick="setTheme('dark')" style="padding:6px 16px;font-size:13px">🌙 ${LANG==="vi"?"Tối":"Dunkel"}</button><button class="theme-btn ${THEME==="system"?"on":""}" onclick="setTheme('system')" style="padding:6px 16px;font-size:13px">⚙ ${LANG==="vi"?"Theo hệ thống":"System"}</button></div></div></div>`;
   h += `<div class="fg"><label>Firmenname</label><input class="inp" value="${esc(D.einstellungen.firmenname)}" onchange="D.einstellungen.firmenname=this.value;save();if(typeof sbSaveEinstellungen==='function')sbSaveEinstellungen().catch(e=>console.error('sbEinst:',e))"></div>`;
 
   // Telegram

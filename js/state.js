@@ -1,10 +1,12 @@
 // ═══ STATE: Load, Save, Migrate, Theme ═══
 // ═══ STATE ═══
-let D, U, PAGE = "dashboard", STF = "all", THEME = "dark";
+// Giao diện: "light" (mặc định) | "dark" | "system". Lưu riêng ở "lager_theme" (D.theme cũ bỏ qua → mọi máy về sáng).
+function loadTheme() { try { const t = localStorage.getItem("lager_theme"); return t === "dark" || t === "system" ? t : "light"; } catch { return "light"; } }
+let D, U, PAGE = "dashboard", STF = "all", THEME = loadTheme();
 let _IME = false; // Telex/IME composition active
 document.addEventListener("compositionstart", () => { _IME = true; });
 document.addEventListener("compositionend", (e) => { _IME = false; if (e.target?.dispatchEvent) e.target.dispatchEvent(new Event("input")); });
-function load() { try { const s = localStorage.getItem(SK); D = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEF)); } catch { D = JSON.parse(JSON.stringify(DEF)); } LANG = D.lang || "de"; THEME = D.theme || "dark"; migrate(); applyTheme(); fixMobileHeight(); }
+function load() { try { const s = localStorage.getItem(SK); D = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEF)); } catch { D = JSON.parse(JSON.stringify(DEF)); } LANG = D.lang || "de"; migrate(); applyTheme(); fixMobileHeight(); }
 // loadStandorte removed — sbLoadAll() in supabase.js handles all data loading
 function fixMobileHeight() {
   const setH = () => { document.documentElement.style.setProperty('--vh', window.innerHeight + 'px'); };
@@ -40,8 +42,19 @@ function migrate() {
   save();
 }
 function save() { try { localStorage.setItem(SK, JSON.stringify(D)); if (typeof rtMarkLocalChange === "function") rtMarkLocalChange(); } catch {} }
-function applyTheme() { document.documentElement.className = THEME === "light" ? "light" : ""; }
-function setTheme(t) { THEME = t; D.theme = t; save(); applyTheme(); render(); }
+let _darkMQ = null;
+function applyTheme() {
+  if (!_darkMQ && window.matchMedia) {
+    _darkMQ = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => { if (THEME === "system") applyTheme(); };
+    if (_darkMQ.addEventListener) _darkMQ.addEventListener("change", onChange); else if (_darkMQ.addListener) _darkMQ.addListener(onChange);
+  }
+  const dark = THEME === "dark" || (THEME === "system" && !!_darkMQ && _darkMQ.matches);
+  document.documentElement.className = dark ? "" : "light";
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.content = dark ? "#0B0E14" : "#F1F5F9";
+}
+function setTheme(t) { THEME = t; try { localStorage.setItem("lager_theme", t); } catch {} applyTheme(); render(); }
 
 // ═══ KEYBOARD SHORTCUTS ═══
 document.addEventListener("keydown", (e) => {

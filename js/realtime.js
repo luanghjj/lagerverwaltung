@@ -68,7 +68,6 @@ async function realtimeReload() {
     if (sbData && sbData.artikel && sbData.artikel.length > 0) {
       // Preserve local-only settings
       sbData.lang = LANG;
-      sbData.theme = THEME;
       D = sbData;
       save();
       // Tài khoản bị xóa hoặc PIN đổi trên máy khác → bắt đăng nhập lại

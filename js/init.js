@@ -12,11 +12,9 @@ let APP_ONLINE = true;
       try {
         const cached = JSON.parse(localStorage.getItem(SK) || "{}");
         sbData.lang = cached.lang || "de";
-        sbData.theme = cached.theme || "dark";
       } catch(e) {}
       D = sbData;
       LANG = D.lang || "de";
-      THEME = D.theme || "dark";
       applyTheme();
       fixMobileHeight();
       save();
