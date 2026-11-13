@@ -22,7 +22,8 @@ input,select,textarea,button{font-family:var(--f);font-size:17px;touch-action:ma
 a{color:var(--ac);text-decoration:none}
 
 /* LAYOUT */
-.app{display:flex;height:100vh;height:100dvh;height:var(--vh,100vh);overflow:hidden}
+#app{height:100%}
+.app{display:flex;height:100%;overflow:hidden}
 .sb{width:var(--sb);min-width:var(--sb);background:var(--b2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
 .sb-h{padding:16px 14px 10px;border-bottom:1px solid var(--bd)}
 .sb-logo{font-size:17px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(135deg,#3B82F6,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -134,7 +135,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
 .tst-i{background:var(--aA);color:#93C5FD;border:1px solid rgba(59,130,246,.3)}
 
 /* LOGIN */
-.lg-w{display:flex;align-items:center;justify-content:center;height:100vh;height:var(--vh,100vh);background:var(--bg)}
+.lg-w{display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg)}
 .lg-b{background:var(--b2);border:1px solid var(--bd);border-radius:12px;padding:28px 24px;width:100%;max-width:330px;text-align:center}
 .lg-t{font-size:19px;font-weight:800;margin-bottom:2px;background:linear-gradient(135deg,#3B82F6,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .us-l{display:flex;flex-direction:column;gap:4px;margin:14px 0}
@@ -242,7 +243,6 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
 @supports(padding-top:env(safe-area-inset-top)){
   .sb-h{padding-top:max(12px,env(safe-area-inset-top))}
   .hb{top:max(8px,env(safe-area-inset-top))}
-  .mn-h{padding-top:max(10px,env(safe-area-inset-top))}
   .tst-c{bottom:max(8px,env(safe-area-inset-bottom))}
 }
 
@@ -300,7 +300,6 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
 
 /* ═══ PWA Standalone safe-area ═══ */
 @media all and (display-mode: standalone) {
-  #app{padding-top:env(safe-area-inset-top, 0px)}
   .sb{padding-top:env(safe-area-inset-top, 0px)}
 }
 
@@ -347,7 +346,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.03)}
 .ma-q{width:42px;text-align:center;font-family:var(--m);font-weight:700;font-size:18px;background:none;border:none;color:var(--tx)}
 .ma-add{background:var(--b3);border:1px solid var(--bd2);color:var(--ac);border-radius:11px;height:44px;padding:0 14px;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer}
 .ma-add:disabled{opacity:.4;cursor:default}
-.ma-bar{padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--bd);background:var(--b2)}
+.ma-bar{padding:10px 12px;border-top:1px solid var(--bd);background:var(--b2)}
 .ma-go{background:linear-gradient(135deg,var(--a2),var(--ac));color:#fff;border:none;border-radius:12px;height:52px;width:100%;font-weight:800;font-size:17px;font-family:inherit;cursor:pointer}
 .ma-go:disabled{opacity:.45;cursor:default}
 .ma-br{display:flex;align-items:center;justify-content:space-between;background:var(--b2);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:8px 12px;cursor:pointer}
