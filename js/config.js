@@ -15,6 +15,18 @@ const canP = () => !U || can(U.role,"preise");
 const prc = (v,fallback) => canP() ? (typeof v==="string"?v:fC(v)) : (fallback||"•••");
 const esc = s => String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const norm = s => String(s??"").normalize("NFD").replace(/[\u0300-\u036f\u0111\u0110]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").toLowerCase();
+// Tìm lỏng: bỏ dấu + bỏ hết ký tự đặc biệt (gạch, ngoặc, dấu phẩy, dấu cách…).
+// "bami" khớp "BAMI Dipschale", "pho" khớp "Bánh Phở", "cafe" khớp "Kaffeebecher".
+const normL = s => norm(s).replace(/[^a-z0-9]/g, "");
+// Tách từ trước rồi mới bỏ ký tự đặc biệt → "pho banh" vẫn khớp "Bánh Phở" (mỗi từ phải có trong tên).
+const qTokens = q => norm(q).split(/\s+/).map(t => t.replace(/[^a-z0-9]/g, "")).filter(Boolean);
+const textMatch = (hay, q) => qTokens(q).every(t => hay.includes(t));
+const artMatch = (a, q) => {
+  if (!qTokens(q).length) return true;
+  if (!a) return false;
+  const hay = normL([a.name, a.name_vi, a.sku, a.artNr, ...(a.barcodes || []), ...(a.lieferanten || []).map(l => l.artNr)].filter(Boolean).join(" "));
+  return textMatch(hay, q);
+};
 const WDAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 const WDAYS_S = ["Mo","Di","Mi","Do","Fr","Sa","So"];
 const WDAYS_VI = ["T2","T3","T4","T5","T6","T7","CN"];

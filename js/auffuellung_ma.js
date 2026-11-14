@@ -191,10 +191,10 @@ function maKatTabs(items, vertical) {
 }
 
 function maGrid(br, items) {
-  const q = MA_STATE.search.trim().toLowerCase();
+  const q = MA_STATE.search || "";
   let list = items;
   if (MA_STATE.kat !== "all") list = list.filter(it => (it.art.kategorien || []).includes(MA_STATE.kat));
-  if (q) list = list.filter(it => artN(it.art).toLowerCase().includes(q) || (it.art.artNr || "").toLowerCase().includes(q));
+  if (qTokens(q).length) list = list.filter(it => artMatch(it.art, q));
   if (!list.length) return `<div class="ma-empty">${LANG === "vi" ? "Không có món nào" : "Keine Artikel"}</div>`;
   return `<div class="ma-grid">${list.map(it => maCard(br, it)).join("")}</div>`;
 }

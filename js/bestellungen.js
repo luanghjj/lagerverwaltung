@@ -36,7 +36,7 @@ function renderBestellungen(vS, aS) {
     filtered = filtered.filter(b => {
       const a = D.artikel.find(x=>x.id===b.artikelId);
       const l = D.lieferanten.find(x=>x.id===b.lieferantId);
-      return norm(artN(a)).includes(q) || norm(a?.sku||"").includes(q) || norm(l?.name||"").includes(q) || norm(b.referenz||"").includes(q);
+      return artMatch(a, q) || normL(l?.name||"").includes(normL(q)) || normL(b.referenz||"").includes(normL(q));
     });
   }
 

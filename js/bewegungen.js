@@ -64,7 +64,7 @@ function bewSearch(typ) {
   const q = norm($("#bew_search")?.value||"");
   if (!q) { $("#bew_results").innerHTML = ""; return; }
   const stId = $("#bew_standort")?.value || "";
-  const results = D.artikel.filter(a => norm(a.name).includes(q) || norm(a.name_vi).includes(q) || norm(a.sku).includes(q) || (a.barcodes||[]).some(bc => bc.toLowerCase().includes(q))).slice(0,10);
+  const results = D.artikel.filter(a => artMatch(a, q)).slice(0,10);
   if (!results.length) {
     const raw = $("#bew_search")?.value?.trim() || "";
     const isBarcode = /^\d{8,}$/.test(raw);
@@ -91,7 +91,7 @@ function bewSearch(typ) {
 function bewSearchKey(e, typ) {
   if (e.key === "Enter") {
     const q = norm($("#bew_search")?.value||"");
-    const a = D.artikel.find(a => norm(a.name).includes(q) || norm(a.name_vi).includes(q) || norm(a.sku) === q || (a.barcodes||[]).some(bc => bc.toLowerCase() === q));
+    const a = D.artikel.find(a => artMatch(a, q) || normL(a.sku) === normL(q) || (a.barcodes||[]).some(bc => normL(bc) === normL(q)));
     if (a) addToBatch(a.id, typ);
     else {
       const raw = $("#bew_search")?.value?.trim() || "";
@@ -349,7 +349,7 @@ function renderBewegungen(vS, aS) {
   if (q) {
     bew = bew.filter(b => {
       const a = D.artikel.find(x=>x.id===b.artikelId);
-      return norm(a?.name).includes(q) || norm(a?.name_vi).includes(q) || norm(a?.sku).includes(q) || (b.referenz||"").toLowerCase().includes(q) || (b.notiz||"").toLowerCase().includes(q) || norm(b.lagerort).includes(q);
+      return artMatch(a, q) || normL(b.referenz||"").includes(normL(q)) || normL(b.notiz||"").includes(normL(q)) || normL(b.lagerort).includes(normL(q));
     });
     h += `<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${bew.length} ${LANG==="vi"?"kết quả cho":"Ergebnis(se) für"} „${esc(BWG_SEARCH)}"</div>`;
   } else {

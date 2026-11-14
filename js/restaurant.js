@@ -205,7 +205,7 @@ function renderAnfTable(items, brId) {
       }
     }
 
-    h += `<div class="anf-row" data-name="${norm(it.art?.name||"")} ${norm(it.art?.name_vi||"")}" style="padding:10px 8px;border-bottom:1px solid var(--bd);${isEmpty?"background:var(--rA);border-radius:6px;margin-bottom:2px":""}">`;
+    h += `<div class="anf-row" data-name="${normL(it.art?.name||"")} ${normL(it.art?.name_vi||"")}" style="padding:10px 8px;border-bottom:1px solid var(--bd);${isEmpty?"background:var(--rA);border-radius:6px;margin-bottom:2px":""}">`;
     // Row 1: Name + Info + Input (right)
     h += `<div style="display:flex;align-items:center;gap:8px">`;
     h += `<div style="flex:1;min-width:0">`;
@@ -238,10 +238,9 @@ function renderAnfTable(items, brId) {
 
 function anfFilterList(q) {
   if(_IME)return;
-  const ql = norm(q);
   document.querySelectorAll(".anf-row").forEach(row => {
     const name = row.getAttribute("data-name") || "";
-    row.style.display = !ql || name.includes(ql) ? "" : "none";
+    row.style.display = textMatch(name, q) ? "" : "none";
   });
 }
 
@@ -257,7 +256,7 @@ function anfSearchAdd(q) {
   const matches = D.artikel.filter(a =>
     !assigned.has(a.id) &&
     (a.status || "active") === "active" &&
-    (norm(a.name || "").includes(ql) || norm(a.name_vi || "").includes(ql) || norm(a.sku || "").includes(ql))
+    (artMatch(a, ql))
   ).slice(0, 8);
 
   if (!matches.length) {
@@ -612,7 +611,7 @@ function breRenderPicker() {
   if (_IME) return;
   const wrap = document.getElementById("bre_pick_list");
   if (!wrap) return;
-  const ql = norm(document.getElementById("bre_pick_q")?.value || "");
+  const ql = document.getElementById("bre_pick_q")?.value || "";
   const assigned = new Set([...document.querySelectorAll('[id^="bre_art_id_"]')].map(el => el.value));
   const katById = {};
   D.kategorien.forEach(k => { katById[k.id] = k; });
@@ -620,8 +619,8 @@ function breRenderPicker() {
   D.artikel.forEach(a => {
     if (assigned.has(a.id) || (a.status || "active") !== "active") return;
     const kats = (a.kategorien||[]).map(id => katById[id]).filter(Boolean);
-    if (ql && !norm(a.name).includes(ql) && !norm(a.name_vi).includes(ql) && !norm(a.sku).includes(ql)
-      && !kats.some(k => norm(k.name).includes(ql) || norm(k.name_vi).includes(ql))) return;
+    if (!artMatch(a, ql)
+      && !kats.some(k => textMatch(normL(k.name), ql) || textMatch(normL(k.name_vi), ql))) return;
     rows.push({ a, k: kats[0], kn: kats[0] ? katN(kats[0]) : "" });
   });
   const byName = (x, y) => (artN(x.a)||"").localeCompare(artN(y.a)||"", LANG);

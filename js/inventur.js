@@ -107,7 +107,7 @@ function renderInventur(vS, aS) {
     // Search filter      
     if (INV_SEARCH) {
       const q = norm(INV_SEARCH);
-      arts = arts.filter(a => norm(a.name).includes(q) || norm(a.name_vi).includes(q) || norm(a.sku).includes(q) || (a.barcodes||[]).some(bc => bc.toLowerCase().includes(q)));
+      arts = arts.filter(a => artMatch(a, q));
       if (!arts.length && /^\d{8,}$/.test(INV_SEARCH.trim()) && can(U.role,"artikel")) {
         h += `<div style="text-align:center;padding:16px"><div style="margin-bottom:8px;color:var(--t3)">${LANG==="vi"?"Mã vạch chưa có SP":"Barcode nicht gefunden"}: <b>${esc(INV_SEARCH.trim())}</b></div><button class="btn btn-p btn-sm" onclick="editArtikelWithBarcode('${esc(INV_SEARCH.trim())}')">${LANG==="vi"?"+ Tạo sản phẩm mới":"+ Neuen Artikel anlegen"}</button></div>`;
       }

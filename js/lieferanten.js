@@ -3,7 +3,7 @@ let LIEF_SEARCH = "";
 function renderLieferanten() {
   let h = `<div class="mn-h"><div class="mn-t">${t("nav.suppliers")}</div><div class="mn-a">${can(U.role,"lieferanten")?`<button class="btn btn-p" onclick="editLief()">+ ${t("c.new")}</button>`:""}</div></div><div class="mn-c">`;
   h += `<div style="margin-bottom:8px"><div class="srch"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="inp" placeholder="${LANG==="vi"?"Tìm NCC...":"Lieferant suchen..."}" value="${esc(LIEF_SEARCH)}" oninput="if(_IME)return;LIEF_SEARCH=this.value;render()" style="padding-right:${LIEF_SEARCH?'28px':'9px'}">${LIEF_SEARCH?`<button class="bi" onclick="LIEF_SEARCH='';render()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3)">✕</button>`:""}</div></div>`;
-  const liefs = LIEF_SEARCH ? D.lieferanten.filter(l => { const q=norm(LIEF_SEARCH); return norm(l.name).includes(q)||norm(l.kontakt).includes(q)||norm(l.email).includes(q); }) : D.lieferanten;
+  const liefs = LIEF_SEARCH ? D.lieferanten.filter(l => { const q=normL(LIEF_SEARCH); return normL(l.name).includes(q)||normL(l.kontakt).includes(q)||normL(l.email).includes(q); }) : D.lieferanten;
   h += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:7px">`;
   liefs.forEach(l => {
     const arts = D.artikel.filter(a=>a.lieferanten.some(al=>al.lieferantId===l.id));

@@ -402,7 +402,7 @@ function vlSearch(q) {
   const ql = norm(q);
   const v = window._vlForm;
   const existIds = new Set(v.items.map(it=>it.artikelId));
-  const results = D.artikel.filter(a => !existIds.has(a.id) && (norm(a.name).includes(ql) || norm(a.name_vi).includes(ql) || norm(a.sku).includes(ql))).slice(0,5);
+  const results = D.artikel.filter(a => !existIds.has(a.id) && artMatch(a, ql)).slice(0,5);
   let h = `<div class="live-results">`;
   results.forEach(a => {
     h += `<div class="live-item" onmousedown="vlAddItem('${a.id}')"><div style="flex:1"><div style="font-weight:600;font-size:11.5px">${esc(artN(a))}</div><div style="font-size:9px;color:var(--t3)">${esc(a.sku)} · ${esc(a.einheit)}</div></div></div>`;

@@ -88,7 +88,7 @@ function renderTransfer(vS, aS) {
       done = done.filter(tf => {
         const von = D.standorte.find(s=>s.id===tf.vonId);
         const nach = D.standorte.find(s=>s.id===tf.nachId);
-        return tf.items.some(it => { const a=D.artikel.find(x=>x.id===it.artId); return norm(artN(a)).includes(tfQ) || norm(a?.sku).includes(tfQ); }) || (von?.name||"").toLowerCase().includes(tfQ) || (nach?.name||"").toLowerCase().includes(tfQ);
+        return tf.items.some(it => { const a=D.artikel.find(x=>x.id===it.artId); return artMatch(a, tfQ); }) || normL(von?.name||"").includes(normL(tfQ)) || normL(nach?.name||"").includes(normL(tfQ));
       });
       if (tfQ) h += `<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${done.length} ${LANG==="vi"?"kết quả":"Ergebnisse"}</div>`;
     }
@@ -206,7 +206,7 @@ function tfSearch(q) {
   const vonName = D.standorte.find(s=>s.id===vonId)?.name||"";
   const nachName = D.standorte.find(s=>s.id===nachId)?.name||"";
   const ql = norm(q);
-  const results = D.artikel.filter(a => (norm(a.name).includes(ql) || norm(a.name_vi).includes(ql) || norm(a.sku).includes(ql) || (a.barcodes||[]).some(bc => bc.toLowerCase().includes(ql))) && (a.istBestand[vonId]||0) > 0).slice(0,8);
+  const results = D.artikel.filter(a => artMatch(a, ql) && (a.istBestand[vonId]||0) > 0).slice(0,8);
   let h = "";
   results.forEach(a => {
     const vonIst = a.istBestand[vonId]||0;

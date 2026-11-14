@@ -70,7 +70,7 @@ function renderArtikel(vS, aS) {
 
   const q = norm(ART_SEARCH);
   const fil = visibleArt.filter(a => {
-    if (q && !norm(a.name).includes(q) && !norm(a.name_vi).includes(q) && !norm(a.sku).includes(q) && !(a.barcodes||[]).some(bc=>bc.includes(q))) return false;
+    if (q && !artMatch(a, q)) return false;
     return true;
   });
 
@@ -475,7 +475,7 @@ function showUnassignedModal() {
   h += `<div id="uaList" style="max-height:55vh;overflow-y:auto">`;
   unassigned.forEach((a, i) => {
     const kats = a.kategorien.map(kId => D.kategorien.find(k=>k.id===kId)).filter(Boolean);
-    h += `<div class="ua-row" data-name="${norm(artN(a))} ${norm(a.name_vi||"")} ${norm(a.name||"")}" data-id="${a.id}" style="padding:8px;border-bottom:1px solid var(--bd)">`;
+    h += `<div class="ua-row" data-name="${normL(artN(a))} ${normL(a.name_vi||"")} ${normL(a.name||"")}" data-id="${a.id}" style="padding:8px;border-bottom:1px solid var(--bd)">`;
     // Top: checkbox + image + name
     h += `<div style="display:flex;align-items:center;gap:8px">`;
     h += `<input type="checkbox" class="ua-cb" data-artid="${a.id}" onchange="uaUpdateCount()" style="width:16px;height:16px;cursor:pointer;flex-shrink:0">`;
@@ -517,9 +517,9 @@ function uaToggleBrPicker(artId) {
 }
 
 function uaFilterList() {
-  const q = norm(document.getElementById("uaSearch")?.value || "");
+  const q = document.getElementById("uaSearch")?.value || "";
   document.querySelectorAll(".ua-row").forEach(row => {
-    row.style.display = !q || (row.dataset.name||"").includes(q) ? "" : "none";
+    row.style.display = textMatch(row.dataset.name||"", q) ? "" : "none";
   });
 }
 
