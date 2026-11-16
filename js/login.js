@@ -4,6 +4,10 @@ function renderLogin() {
   h += `<input class="inp" type="password" id="pinInput" placeholder="PIN" maxlength="6" inputmode="numeric" onkeydown="if(event.key==='Enter')doLogin()" style="margin-bottom:6px;text-align:center;letter-spacing:6px;font-size:18px;font-family:var(--m)">`;
   h += `<div id="pinError" style="color:var(--rd);font-size:11px;margin-bottom:6px;display:none"></div>`;
   h += `<button class="btn btn-p" style="width:100%" onclick="doLogin()">${t("l.login")}</button>`;
+  if (typeof backupLocalData === "function") {
+    h += `<button class="btn btn-o" style="width:100%;margin-top:14px" onclick="backupLocalData()">💾 ${LANG === "vi" ? "Sao lưu dữ liệu trên máy" : "Daten auf diesem Gerät sichern"}</button>`;
+    h += `<div style="font-size:10.5px;color:var(--t3);margin-top:4px;text-align:center">${esc(backupLabel())}</div>`;
+  }
   h += `</div></div>`;
   $("#app").innerHTML = h;
   setTimeout(() => { const inp = $("#pinInput"); if (inp) inp.focus(); }, 100);
