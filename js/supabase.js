@@ -27,13 +27,15 @@ async function sbFetch(table, query, orderCols) {
 }
 
 // ── Login by PIN ──
+// PIN wird serverseitig geprüft (RPC login_pin) und nie an den Client zurückgegeben.
+// Gibt den Benutzer zurück, oder { error:"LOCKED" } nach zu vielen Fehlversuchen, sonst null.
 async function sbLoginByPin(pin) {
-  const { data, error } = await sb.from("users").select("*").eq("pin", pin).is("deleted_at", null).limit(1);
-  if (error || !data || data.length === 0) return null;
-  const u = data[0];
-  return { id: u.id, name: u.name, email: u.email || "", role: u.role, pin: u.pin,
-    standorte: u.standorte || ["all"], bereiche: u.bereiche || ["all"],
-    perms: (u.perms && u.perms.length > 0) ? u.perms : null };
+  const { data, error } = await sb.rpc("login_pin", { p_pin: pin });
+  if (error || !data || data.error === "WRONG") return null;
+  if (data.error === "LOCKED") return { error: "LOCKED" };
+  return { id: data.id, name: data.name, email: data.email || "", role: data.role,
+    standorte: data.standorte || ["all"], bereiche: data.bereiche || ["all"],
+    perms: (data.perms && data.perms.length > 0) ? data.perms : null };
 }
 
 // ══════════════════════════════════════════
@@ -56,7 +58,8 @@ async function sbLoadAll() {
     ] = await Promise.all([
       sbFetch("standorte"),
       sbFetch("kategorien"),
-      sbFetch("users"),
+      // pin-Spalte ist für den anon-Key gesperrt — explizite Spaltenliste, sonst schlägt select("*") fehl
+      sbFetch("users", "id,name,email,role,standorte,bereiche,perms,deleted_at"),
       sbFetch("lieferanten"),
       sbFetch("artikel"),
       sbFetch("artikel_bestand", "*", ["artikel_id","standort_id"]),
@@ -94,8 +97,9 @@ async function sbLoadAll() {
     }));
 
     // ── Users (exclude soft-deleted) ──
+    // pin wird bewusst nicht geladen: die Spalte ist serverseitig gesperrt
     result.users = users.filter(u => !u.deleted_at).map(u => ({
-      id: u.id, name: u.name, email: u.email || "", role: u.role, pin: u.pin,
+      id: u.id, name: u.name, email: u.email || "", role: u.role,
       standorte: u.standorte || ["all"], bereiche: u.bereiche || ["all"],
       perms: (u.perms && u.perms.length > 0) ? u.perms : null
     }));
@@ -454,25 +458,18 @@ async function sbSaveTransfer(t) {
   }
 }
 
-// Save user to Supabase staff_pins
-// Gibt { ok:true } oder { error } zurück, damit die Maske Fehler anzeigen kann.
+// Save user to Supabase.
+// Gibt { ok:true, pinChanged } oder { error } zurück, damit die Maske Fehler anzeigen kann.
+// Der PIN wird nur serverseitig (RPC save_user) geschrieben — die Spalte ist für den anon-Key gesperrt.
 async function sbSaveUser(u) {
-  // PIN ist UNIQUE — auch gelöschte Benutzer belegen ihren PIN noch.
-  const { data: clash, error: qErr } = await sb.from("users").select("id,deleted_at").eq("pin", u.pin).neq("id", u.id);
-  if (qErr) { console.error("[sbSaveUser]", qErr.message); return { error: qErr.message }; }
-  if ((clash || []).some(c => !c.deleted_at)) return { error: "PIN_TAKEN" };
-  // PIN eines gelöschten Benutzers freigeben
-  for (const c of clash || []) {
-    const { error: e } = await sb.from("users").update({ pin: `${u.pin}-${Math.random().toString(36).slice(2, 5)}` }).eq("id", c.id);
-    if (e) { console.error("[sbSaveUser] PIN freigeben:", e.message); return { error: e.message }; }
-  }
-  const { error } = await sb.from("users").upsert({
-    id: u.id, name: u.name, email: u.email || "", role: u.role, pin: u.pin,
-    standorte: u.standorte || ["all"], bereiche: u.bereiche || ["all"],
-    perms: u.perms || []
-  }, { onConflict: "id" });
-  if (error) { console.error("[sbSaveUser]", error.message); return { error: error.code === "23505" ? "PIN_TAKEN" : error.message }; }
-  return { ok: true };
+  const { data, error } = await sb.rpc("save_user", {
+    p_id: u.id, p_name: u.name, p_email: u.email || "", p_role: u.role,
+    p_pin: u.pin, p_standorte: u.standorte || ["all"], p_bereiche: u.bereiche || ["all"],
+    p_perms: u.perms || []
+  });
+  if (error) { console.error("[sbSaveUser]", error.message); return { error: error.message }; }
+  if (data && data.error) return { error: data.error };
+  return { ok: true, pinChanged: !!(data && data.pin_changed) };
 }
 
 // Soft-delete user from Supabase

@@ -70,10 +70,10 @@ async function realtimeReload() {
       sbData.lang = LANG;
       D = sbData;
       save();
-      // Tài khoản bị xóa hoặc PIN đổi trên máy khác → bắt đăng nhập lại
+      // Tài khoản bị xóa trên máy khác → bắt đăng nhập lại
       if (U) {
         const fresh = D.users.find(u => u.id === U.id);
-        if (!fresh || fresh.pin !== U.pin) { U = null; clearSession(); }
+        if (!fresh) { U = null; clearSession(); }
         else { U = fresh; saveSession(); }
       }
       render();

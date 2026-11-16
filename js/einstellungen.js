@@ -532,11 +532,14 @@ function resetAll() {
   setTimeout(() => document.getElementById("resetPw")?.focus(), 100);
 }
 
-function confirmReset() {
+async function confirmReset() {
   const pw = document.getElementById("resetPw")?.value || "";
   const errEl = document.getElementById("resetErr");
   if (!pw) { if(errEl){errEl.style.display="";errEl.textContent=LANG==="vi"?"Vui lòng nhập mật khẩu":"Bitte Passwort eingeben";} return; }
-  if (pw !== U.pin) { if(errEl){errEl.style.display="";errEl.textContent=LANG==="vi"?"Mật khẩu sai!":"Falsches Passwort!";} document.getElementById("resetPw").value=""; document.getElementById("resetPw")?.focus(); return; }
+  // PIN wird serverseitig geprüft (PINs sind im Browser nicht mehr lesbar)
+  let ok = false;
+  try { const { data } = await sb.rpc("check_pin", { p_user_id: U.id, p_pin: pw }); ok = data === true; } catch (e) { console.error("[check_pin]", e); }
+  if (!ok) { if(errEl){errEl.style.display="";errEl.textContent=LANG==="vi"?"Mật khẩu sai!":"Falsches Passwort!";} document.getElementById("resetPw").value=""; document.getElementById("resetPw")?.focus(); return; }
 
   // Password correct — execute reset
   document.getElementById("resetModal")?.remove();

@@ -64,10 +64,11 @@ function renderBenutzer() {
 
 function editUser(id) {
   const u = id ? D.users.find(x=>x.id===id) : null;
-  const usedPins = D.users.map(x => x.pin);
-  let rndPin = "";
-  if (!u) { do { rndPin = String(Math.floor(100000 + Math.random() * 900000)); } while (usedPins.includes(rndPin)); }
-  const f = u ? JSON.parse(JSON.stringify(u)) : {id:uid(),name:"",email:"",role:"staff",standorte:["all"],bereiche:["all"],pin:rndPin};
+  // PINs sind nicht mehr lesbar: beim Bearbeiten bleibt das Feld leer (= PIN unverändert),
+  // neue Benutzer bekommen einen Zufalls-PIN; Duplikate prüft der Server (PIN_TAKEN).
+  const rndPin = u ? "" : String(Math.floor(100000 + Math.random() * 900000));
+  const f = u ? JSON.parse(JSON.stringify(u)) : {id:uid(),name:"",email:"",role:"staff",standorte:["all"],bereiche:["all"]};
+  delete f.pin;
   const title = u ? `${t("c.edit")} — ${esc(f.name)}` : `${t("c.new")} ${t("nav.users")}`;
 
   let h = `<div class="mo-ov" onclick="closeModal()"><div class="mo" onclick="event.stopPropagation()"><div class="mo-h"><div class="mo-ti">${title}</div><button class="bi" onclick="closeModal()">✕</button></div><div class="mo-b">`;
@@ -82,7 +83,7 @@ function editUser(id) {
     h += `<option value="${role}" ${f.role===role?"selected":""}>${t("r."+role)}</option>`;
   }
   h += `</select></div>`;
-  h += `<div class="fg"><label>PIN (4–6 ${LANG==="vi"?"số":"Ziffern"}) *</label><input class="inp" id="ue_pin" value="${esc(f.pin)}" maxlength="6" inputmode="numeric" placeholder="123456" style="font-family:var(--m);letter-spacing:4px;text-align:center;font-size:16px"></div>`;
+  h += `<div class="fg"><label>PIN (4–6 ${LANG==="vi"?"số":"Ziffern"})${u ? "" : " *"}</label><input class="inp" id="ue_pin" value="${esc(rndPin)}" maxlength="6" inputmode="numeric" placeholder="${u ? (LANG==="vi"?"để trống = giữ PIN cũ":"leer = unverändert") : "123456"}" style="font-family:var(--m);letter-spacing:4px;text-align:center;font-size:16px"></div>`;
   h += `</div>`;
 
   // Role description
@@ -271,17 +272,14 @@ async function saveUser(id, isEdit) {
   f.name = (document.getElementById("ue_name")?.value || "").trim();
   f.email = (document.getElementById("ue_email")?.value || "").trim();
   f.role = document.getElementById("ue_role")?.value || "staff";
-  f.pin = (document.getElementById("ue_pin")?.value || "").trim();
+  const pin = (document.getElementById("ue_pin")?.value || "").trim();
 
   if (!f.name) { toast(LANG==="vi"?"Vui lòng nhập tên":"Bitte Name eingeben","e"); return; }
-  if (!/^\d{4,6}$/.test(f.pin)) { toast(LANG==="vi"?"PIN phải có 4–6 số":"PIN muss 4–6 Ziffern haben","e"); return; }
+  // Beim Bearbeiten darf das Feld leer bleiben (PIN unverändert)
+  if ((pin || !isEdit) && !/^\d{4,6}$/.test(pin)) { toast(LANG==="vi"?"PIN phải có 4–6 số":"PIN muss 4–6 Ziffern haben","e"); return; }
   if (!f.standorte.length) { toast(LANG==="vi"?"Vui lòng chọn chi nhánh":"Bitte Standort wählen","e"); return; }
   if (!f.bereiche || !f.bereiche.length) f.bereiche = ["all"];
 
-  // PIN darf nicht von einem anderen aktiven Benutzer belegt sein
-  if (D.users.some(u => u.id !== id && u.pin === f.pin)) {
-    toast(LANG==="vi"?"PIN này đã có người dùng":"PIN wird bereits verwendet","e"); return;
-  }
   if (!isEdit && D.users.some(u => u.name.toLowerCase() === f.name.toLowerCase())) {
     toast(LANG==="vi"?"Tên đã tồn tại":"Name existiert bereits","e"); return;
   }
@@ -289,11 +287,14 @@ async function saveUser(id, isEdit) {
   const btn = document.querySelector(".mo-f .btn-p");
   if (btn) { btn.disabled = true; btn.textContent = "..."; }
 
-  const res = typeof sbSaveUser === "function" ? await sbSaveUser(f) : { ok: true };
+  // PIN geht nur an den Server, nie in D.users / localStorage
+  const res = typeof sbSaveUser === "function" ? await sbSaveUser({ ...f, pin }) : { ok: true };
   if (res && res.error) {
     if (btn) { btn.disabled = false; btn.textContent = t("c.save"); }
     toast(res.error === "PIN_TAKEN"
       ? (LANG==="vi"?"PIN này đã có người dùng":"PIN wird bereits verwendet")
+      : res.error === "PIN_INVALID"
+      ? (LANG==="vi"?"PIN phải có 4–6 số":"PIN muss 4–6 Ziffern haben")
       : `${LANG==="vi"?"Không lưu được":"Speichern fehlgeschlagen"}: ${res.error}`, "e");
     return;
   }
@@ -303,7 +304,7 @@ async function saveUser(id, isEdit) {
     if (idx >= 0) D.users[idx] = f;
     if (U.id === id) {
       U.name = f.name; U.email = f.email; U.standorte = f.standorte; U.bereiche = f.bereiche;
-      U.role = f.role; U.pin = f.pin; U.perms = Array.isArray(f.perms) && f.perms.length ? f.perms : null;
+      U.role = f.role; U.perms = Array.isArray(f.perms) && f.perms.length ? f.perms : null;
       saveSession();
     }
   } else {

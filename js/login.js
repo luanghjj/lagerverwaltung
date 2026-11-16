@@ -20,11 +20,13 @@ async function doLogin() {
   if (btn) { btn.disabled = true; btn.textContent = "..."; }
 
   const user = await sbLoginByPin(pin);
-  if (user) {
+  if (user && !user.error) {
     startSession(user);
   } else {
     $("#pinError").style.display = "block";
-    $("#pinError").textContent = t("l.wrongpin");
+    $("#pinError").textContent = user && user.error === "LOCKED"
+      ? (LANG === "vi" ? "Sai PIN quá nhiều lần — thử lại sau 15 phút" : "Zu viele Fehlversuche — bitte in 15 Minuten erneut versuchen")
+      : t("l.wrongpin");
     if (btn) { btn.disabled = false; btn.textContent = t("l.login"); }
     $("#pinInput").value = "";
     $("#pinInput").focus();
@@ -32,8 +34,9 @@ async function doLogin() {
 }
 
 // Đăng nhập được giữ trên máy: mở lại app sau nhiều ngày vẫn vào thẳng, không hỏi PIN.
+// PIN không được lưu trong phiên — tài khoản bị xóa sẽ bị đá ra khi dữ liệu tải lại.
 const SESSION_KEY = "lager_session";
-function saveSession() { try { localStorage.setItem(SESSION_KEY, JSON.stringify({ id: U.id, name: U.name, email: U.email || "", role: U.role, pin: U.pin, standorte: U.standorte, bereiche: U.bereiche, perms: U.perms || null })); } catch {} }
+function saveSession() { try { localStorage.setItem(SESSION_KEY, JSON.stringify({ id: U.id, name: U.name, email: U.email || "", role: U.role, standorte: U.standorte, bereiche: U.bereiche, perms: U.perms || null })); } catch {} }
 function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch {} }
 function loadSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } }
 
@@ -50,12 +53,13 @@ function startSession(user, restored) {
   if (typeof initPush === "function") setTimeout(() => initPush(), 2000);
 }
 
-// Beim App-Start: gespeicherte Sitzung übernehmen, wenn der Benutzer noch existiert und der PIN gleich ist
+// Beim App-Start: gespeicherte Sitzung übernehmen, wenn der Benutzer noch existiert.
+// Alte Sitzungen (vor dem PIN-Schutz) enthalten noch einen PIN → startSession speichert sie ohne PIN neu.
 function restoreSession() {
   const s = loadSession();
   if (!s || !s.id) return;
   const fresh = (D.users || []).find(u => u.id === s.id);
-  if (!fresh || fresh.pin !== s.pin) { clearSession(); return; }
+  if (!fresh) { clearSession(); return; }
   startSession(fresh, true);
 }
 
