@@ -160,7 +160,7 @@ function maCard(br, it) {
   const col = low ? "var(--rd)" : it.lagerIst < it.soll ? "var(--yl)" : "var(--gn)";
   const leer = it.lagerIst <= 0; // nur bei leerem Lager nicht wählbar
   return `<div class="ma-it${low ? " low" : ""}${sel ? " sel" : ""}">
-    <div class="ma-pic">${a.bilder?.length ? `<img src="${esc(a.bilder[0])}" loading="lazy" alt="">` : ""}</div>
+    <div class="ma-pic">${a.bilder?.length ? `<img src="${esc(a.bilder[0])}" loading="lazy" alt="" onclick="maZoom('${a.id}')">` : ""}</div>
     <div class="ma-bd">
       <div class="ma-nm">${esc(artN(a))}</div>
       <div class="ma-meta">${esc(maQuelleLabel(br, it))}</div>
@@ -173,6 +173,25 @@ function maCard(br, it) {
     </div>
   </div>`;
 }
+
+// Bild antippen → groß anzeigen (zum Erkennen). Tippen irgendwo / ✕ / Esc schließt.
+function maZoom(artId) {
+  const a = D.artikel.find(x => x.id === artId);
+  if (!a || !a.bilder?.length) return;
+  maZoomClose();
+  document.body.insertAdjacentHTML("beforeend", `<div class="ma-zoom" id="maZoom" onclick="maZoomClose()">
+    <button class="ma-zoom-x" aria-label="${LANG === "vi" ? "Đóng" : "Schließen"}">✕</button>
+    <img src="${esc(a.bilder[0])}" alt="">
+    <div class="ma-zoom-n">${esc(artN(a))}</div>
+  </div>`);
+  document.addEventListener("keydown", maZoomKey);
+}
+function maZoomClose() {
+  const el = document.getElementById("maZoom");
+  if (el) el.remove();
+  document.removeEventListener("keydown", maZoomKey);
+}
+function maZoomKey(e) { if (e.key === "Escape") maZoomClose(); }
 
 // Farbe der Kategorie (aus Kategorien-Verwaltung) als Tab-Streifen + getönter Hintergrund
 function maKatStyle(k) {
