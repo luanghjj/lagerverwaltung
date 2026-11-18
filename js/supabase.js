@@ -180,14 +180,16 @@ async function sbLoadAll() {
     transferItems.forEach(ti => {
       if (!tfItemsByTf[ti.transfer_id]) tfItemsByTf[ti.transfer_id] = [];
       tfItemsByTf[ti.transfer_id].push({
-        artId: ti.artikel_id, menge: ti.menge || 0,
-        empfangen: ti.empfangen, diff: ti.diff
+        artId: ti.artikel_id || "", menge: ti.menge || 0,
+        empfangen: ti.empfangen, diff: ti.diff,
+        freitext: ti.freitext || "", einheit: ti.einheit || "", abgehakt: !!ti.abgehakt
       });
     });
     result.transfers = transfers.map(t => ({
       id: t.id, vonId: t.von_id, nachId: t.nach_id,
       datum: t.datum || t.created_at, benutzer: t.benutzer || "",
       status: t.status || "unterwegs", items: tfItemsByTf[t.id] || [],
+      lieferDatum: t.liefer_datum || "",
       empfangenDetails: t.empfangen_details || null,
       empfangenVon: t.empfangen_von || "",
       empfangenAm: t.empfangen_am || ""
@@ -438,7 +440,8 @@ async function sbSaveTransfer(t) {
     benutzer: t.benutzer || null, status: t.status,
     empfangen_details: t.empfangenDetails || null,
     empfangen_von: t.empfangenVon || null,
-    empfangen_am: t.empfangenAm || null
+    empfangen_am: t.empfangenAm || null,
+    liefer_datum: t.lieferDatum || null
   });
   await sb.from("transfer_items").delete().eq("transfer_id", t.id);
   if (t.items?.length) {
@@ -451,7 +454,8 @@ async function sbSaveTransfer(t) {
         return {
           id: uid(), transfer_id: t.id, artikel_id: i.artId, menge: i.menge,
           empfangen: (i.empfangen ?? det?.empfangen ?? null),
-          diff: (i.diff ?? det?.diff ?? null)
+          diff: (i.diff ?? det?.diff ?? null),
+          freitext: i.freitext || "", einheit: i.einheit || "", abgehakt: !!i.abgehakt
         };
       })
     );

@@ -3,6 +3,7 @@ function renderTransfer(vS, aS) {
   if (vS.length < 2) return `<div class="mn-h"><div class="mn-t">⇄ ${LANG==="vi"?"Chuyển kho":"Umbuchen"}</div></div><div class="mn-c"><div style="text-align:center;padding:30px;color:var(--t3)">${LANG==="vi"?"Cần ít nhất 2 chi nhánh":"Mindestens 2 Standorte nötig"}</div></div>`;
   if (!D.transfers) D.transfers = [];
   const pending = D.transfers.filter(t=>t.status==="unterwegs");
+  const geplant = D.transfers.filter(t=>t.status==="geplant");
 
   let h = `<div class="mn-h"><div class="mn-t">⇄ ${LANG==="vi"?"Chuyển kho":"Umbuchen"}</div><div class="mn-a">`;
   if (D.transfers.length && can(U.role,"export")) h += `<button class="btn btn-o btn-sm" onclick="exportTfExcel()">⬇ Excel</button><button class="btn btn-o btn-sm" onclick="exportTfCSV()">⬇ CSV</button><button class="btn btn-o btn-sm" onclick="exportTfPDF()">⬇ PDF</button>`;
@@ -50,6 +51,28 @@ function renderTransfer(vS, aS) {
     h += `<hr style="border:none;border-top:1px solid var(--bd);margin:12px 0">`;
   }
 
+  // Lieferscheine aus /store: geplant, Bestand noch nicht berührt
+  if (geplant.length) {
+    h += `<h3 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--ac)">📋 ${geplant.length} ${LANG==="vi"?"phiếu giao hàng đã lên lịch":"geplante Lieferungen"}</h3>`;
+    h += `<div style="font-size:11px;color:var(--t2);margin-bottom:8px">${LANG==="vi"?"Từ trang /store — kho chưa bị trừ. Hoàn tất trên /store.":"Aus der Seite /store — Bestand noch nicht verändert. Abschluss auf /store."}</div>`;
+    geplant.forEach(tf => {
+      const von = D.standorte.find(s=>s.id===tf.vonId);
+      const nach = D.standorte.find(s=>s.id===tf.nachId);
+      const usr = D.users.find(u=>u.id===tf.benutzer);
+      h += `<div class="cd" style="border-left:3px solid var(--ac);margin-bottom:6px">`;
+      h += `<div style="font-weight:700">${esc(von?.name||"?")} → ${esc(nach?.name||"?")}</div>`;
+      h += `<div style="font-size:10px;color:var(--t3)">${tf.lieferDatum?esc(tf.lieferDatum)+" · ":""}${esc(usr?.name||tf.benutzer||"?")}</div>`;
+      tf.items.forEach(it => {
+        const a = D.artikel.find(x=>x.id===it.artId);
+        const name = it.artId ? artN(a) : (it.freitext || "—");
+        const einheit = it.artId ? (a?.einheit || "") : (it.einheit || "");
+        h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>${esc(name)}${einheit?` <span style="color:var(--t3)">${esc(einheit)}</span>`:""}</span><b style="font-family:var(--m)">${it.menge}</b></div>`;
+      });
+      h += `</div>`;
+    });
+    h += `<hr style="border:none;border-top:1px solid var(--bd);margin:12px 0">`;
+  }
+
   // New transfer form
   h += `<h3 style="font-size:13px;font-weight:700;margin-bottom:8px">⇄ ${LANG==="vi"?"Tạo chuyển kho mới":"Neuen Transfer erstellen"}</h3>`;
   h += `<div style="font-size:11px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--b3);border-radius:6px">📤 ${LANG==="vi"?"Hàng sẽ được trừ ngay tại CN gốc. CN đích phải xác nhận nhận hàng.":"Ware wird sofort am Quell-Standort abgebucht. Der Ziel-Standort muss den Empfang bestätigen."}</div>`;
@@ -78,7 +101,7 @@ function renderTransfer(vS, aS) {
   h += `</div>`;
 
   // History
-  let done = (D.transfers||[]).filter(t=>t.status!=="unterwegs");
+  let done = (D.transfers||[]).filter(t=>t.status!=="unterwegs" && t.status!=="geplant");
   // Search
   h += `<h3 style="font-size:13px;font-weight:700;margin:16px 0 6px">${LANG==="vi"?"Lịch sử":"Historie"} (${done.length})</h3>`;
   if (done.length) {
@@ -105,7 +128,7 @@ function renderTransfer(vS, aS) {
       h += `<div class="cd" style="margin-bottom:4px;border-left:3px solid ${stC};cursor:pointer" onclick="document.getElementById('tfh_${idx}').style.display=document.getElementById('tfh_${idx}').style.display==='none'?'':'none'">`;
       h += `<div style="display:flex;justify-content:space-between;align-items:center">`;
       h += `<div><div style="font-weight:600;font-size:12px">${esc(von?.name||"?")} → ${esc(nach?.name||"?")}</div>`;
-      h += `<div style="font-size:10px;color:var(--t3)">${fDT(tf.datum)} · ${esc(usr?.name||"?")}${empUsr?` → ${esc(empUsr.name)}`:""}</div></div>`;
+      h += `<div style="font-size:10px;color:var(--t3)">${fDT(tf.datum)} · ${esc(usr?.name||tf.benutzer||"?")}${empUsr?` → ${esc(empUsr.name||tf.empfangenVon)}`:""}</div></div>`;
       h += `<div style="display:flex;gap:4px;align-items:center"><span class="bp" style="background:${stC}18;color:${stC}">${tf.status==="empfangen"?"✓":"↩"} ${tf.status}</span>`;
       if (fehlCount) h += `<span class="bp" style="background:var(--rA);color:var(--rd)">${fehlCount} ${LANG==="vi"?"thiếu":"Fehl"}</span>`;
       h += `<span style="font-size:10px;color:var(--t3)">${tf.items.length} Art. ▾</span></div></div>`;
@@ -115,8 +138,10 @@ function renderTransfer(vS, aS) {
       h += `<table style="width:100%;border-collapse:collapse"><thead><tr><th style="background:transparent;padding:3px 6px;font-size:9px">${t("c.article")}</th><th style="background:transparent;padding:3px 6px;text-align:right;font-size:9px">${LANG==="vi"?"Gửi":"Gesendet"}</th><th style="background:transparent;padding:3px 6px;text-align:right;font-size:9px">${LANG==="vi"?"Nhận":"Empfangen"}</th><th style="background:transparent;padding:3px 6px;text-align:right;font-size:9px">${LANG==="vi"?"CL":"Diff"}</th></tr></thead><tbody>`;
       details.forEach(d => {
         const a = D.artikel.find(x=>x.id===d.artId);
+        const it = tf.items.find(x=>x.artId && x.artId===d.artId);
+        const name = a ? artN(a) : (it?.freitext || d.freitext || "—");
         const diffCol = d.diff===0?"var(--gn)":d.diff<0?"var(--rd)":"var(--ac)";
-        h += `<tr style="border-bottom:1px solid var(--bd)"><td style="padding:3px 6px;font-weight:500;font-size:11px">${esc(artN(a))}</td>`;
+        h += `<tr style="border-bottom:1px solid var(--bd)"><td style="padding:3px 6px;font-weight:500;font-size:11px">${esc(name)}</td>`;
         h += `<td style="padding:3px 6px;text-align:right;font-family:var(--m);font-size:11px">${d.gesendet}</td>`;
         h += `<td style="padding:3px 6px;text-align:right;font-family:var(--m);font-size:11px;font-weight:600">${d.empfangen}</td>`;
         h += `<td style="padding:3px 6px;text-align:right;font-family:var(--m);font-size:11px;font-weight:700;color:${diffCol}">${d.diff===0?"✓":d.diff>0?"+"+d.diff:d.diff}</td></tr>`;
@@ -141,7 +166,8 @@ function getTfExportData() {
     const details = tf.empfangenDetails || tf.items.map(it=>({artId:it.artId,gesendet:it.menge,empfangen:tf.status==="empfangen"?it.menge:0,diff:0}));
     return details.map(d => {
       const a = D.artikel.find(x=>x.id===d.artId);
-      return { datum: tf.datum, von: von?.name||"", nach: nach?.name||"", artikel: artN(a), sku: a?.sku||"", einheit: a?.einheit||"", gesendet: d.gesendet, empfangen: d.empfangen, diff: d.diff, status: tf.status, gesendetVon: usr?.name||"", empfangenVon: empUsr?.name||"", empfangenAm: tf.empfangenAm||"" };
+      const it = tf.items.find(x=>x.artId && x.artId===d.artId);
+      return { datum: tf.datum, von: von?.name||"", nach: nach?.name||"", artikel: artN(a) || it?.freitext || "", sku: a?.sku||"", einheit: a?.einheit||it?.einheit||"", gesendet: d.gesendet, empfangen: d.empfangen, diff: d.diff, status: tf.status, gesendetVon: usr?.name||tf.benutzer||"", empfangenVon: empUsr?.name||tf.empfangenVon||"", empfangenAm: tf.empfangenAm||"" };
     });
   });
 }
@@ -187,7 +213,8 @@ function exportTfPDF() {
     html += `<tr><th>Artikel</th><th>SKU</th><th class="r">Gesendet</th><th class="r">Empfangen</th><th class="r">Differenz</th></tr></thead><tbody>`;
     details.forEach(d => {
       const a = D.artikel.find(x=>x.id===d.artId);
-      html += `<tr><td>${esc(artN(a))}</td><td class="mono">${esc(a?.sku||"")}</td><td class="r mono">${d.gesendet}</td><td class="r mono" style="font-weight:bold">${d.empfangen}</td><td class="r mono ${d.diff===0?"ok":d.diff<0?"fehl":""}">${d.diff===0?"✓":d.diff}</td></tr>`;
+      const it = tf.items.find(x=>x.artId && x.artId===d.artId);
+      html += `<tr><td>${esc(a ? artN(a) : (it?.freitext || "—"))}</td><td class="mono">${esc(a?.sku||"")}</td><td class="r mono">${d.gesendet}</td><td class="r mono" style="font-weight:bold">${d.empfangen}</td><td class="r mono ${d.diff===0?"ok":d.diff<0?"fehl":""}">${d.diff===0?"✓":d.diff}</td></tr>`;
     });
     html += `</tbody></table>`;
   });

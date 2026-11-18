@@ -386,7 +386,7 @@ function renderDashboard(vS, aS) {
     h += `<td style="font-weight:600;cursor:pointer" onclick="event.stopPropagation();showArtikelDetail('${b.artikelId}')">${esc(artN(a))}</td>`;
     h += `<td class="mob-hide">${esc(s?.name || "")}${b.zielStandortId ? ` → ${esc(D.standorte.find(x => x.id === b.zielStandortId)?.name || "")}` : ""}</td>`;
     h += `<td style="text-align:right;font-family:var(--m);font-weight:700;color:${plus ? "var(--gn)" : minus ? "var(--rd)" : "var(--pu)"}">${plus ? "+" : minus ? "−" : "⇄"}${b.menge}${conv ? `<span class="unit-conv"> = ${esc(conv)}</span>` : ""}</td>`;
-    h += `<td class="mob-hide" style="font-size:10.5px">${usr ? `<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:16px;height:16px;border-radius:3px;background:${ROLES[usr.role]?.color || "#666"};display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:#fff">${usr.name[0]}</span>${esc(usr.name)}</span>` : ""}</td>`;
+    h += `<td class="mob-hide" style="font-size:10.5px">${usr ? `<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:16px;height:16px;border-radius:3px;background:${ROLES[usr.role]?.color || "#666"};display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:#fff">${usr.name[0]}</span>${esc(usr.name)}</span>` : esc(b.benutzer || "")}</td>`;
     h += `</tr>`;
   });
   h += `</tbody></table></div>`;
