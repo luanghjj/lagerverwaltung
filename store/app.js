@@ -455,7 +455,6 @@ function homeHtml(termin) {
     <header class="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-slate-200/70 px-5 pt-5 pb-4" style="padding-top: calc(1.25rem + env(safe-area-inset-top, 0px));">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">OMOI GROUP</p>
           <h1 class="text-xl font-extrabold tracking-tight text-slate-900 leading-tight">Store</h1>
         </div>
         <button type="button" onclick="nameAendern()" class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full active:scale-95 transition-all">${esc(S.name || "—")}${S.admin ? " · Admin" : ""}</button>
@@ -497,7 +496,6 @@ function homeHtml(termin) {
 function nameMaske() {
   $("app").innerHTML = `
     <div class="flex-1 flex flex-col justify-center px-6">
-      <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">OMOI GROUP</p>
       <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 mt-1">Dein Name</h1>
       <p class="text-sm text-slate-400 mt-1">Wird bei jeder Buchung gespeichert.</p>
       <input id="nm" type="text" autocomplete="name" placeholder="z. B. Linh"
